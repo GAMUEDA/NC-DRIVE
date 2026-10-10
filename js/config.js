@@ -5,8 +5,8 @@
    in this block. Lengths are in millimetres unless the name says otherwise.
 
    HOW THE PROJECT IS ORGANISED (open the .html pages from this folder in Edge or Chrome):
-     nc_drive.html        main page: load → clean → read PDF → nest → NC → report, Tools bar, command line
-     nc_search.html       P8  tool page   ┐ each runs on its own, and links to nc_drive.html when it is open
+     index.html        main page: load → clean → read PDF → nest → NC → report, Tools bar, command line
+     nc_search.html       P8  tool page   ┐ each runs on its own, and links to index.html when it is open
      parts_list.html      P9  tool page   │ (js/link.js): files, quantities, job name and the nest's .nc files
      copy_to_drive.html   P10 tool page   │ go between the pages; tool logs and progress show on the main page
      erase_usb.html       P11 tool page   ┘

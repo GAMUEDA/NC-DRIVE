@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Parts List · NC Drive</title>
-<!-- P9 PartsList from PDF — runs on its own; links to nc_drive.html when it is open (js/link.js). -->
+<!-- P9 PartsList from PDF — runs on its own; links to index.html when it is open (js/link.js). -->
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link href="css/ncdrive.css" rel="stylesheet">
 </head>
 <body class="toolPage">
 <main class="tool page" id="dlgPlist">
-  <div class="dh"><a class="brandLink" href="nc_drive.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgPlistT">📄 PartsList from PDF</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) nc_drive.html">Open NC Drive</button></div>
+  <div class="dh"><a class="brandLink" href="index.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgPlistT">📄 PartsList from PDF</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) index.html">Open NC Drive</button></div>
   <div class="db">
     <div class="drop" id="plDrop" style="margin:0;">Drop a parts-list / work-order PDF here (CSV or text works too), or click to browse</div>
     <input type="file" id="plFile" accept=".pdf,.csv,.txt,.tsv" hidden>
@@ -46,8 +46,8 @@ addEventListener('load', function () {
     + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'
     + '<p style="margin:0 0 6px">NC Drive is a folder of files that work together. To open it:</p>'
     + '<ol style="margin:0 0 10px;padding-left:22px"><li>Right-click <b>nc-drive-project.zip</b> and choose <b>Extract All</b> (opening the page from inside the zip does not work).</li>'
-    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>nc_drive.html</b> (Edge or Chrome).</li></ol>'
-    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep nc_drive.html, the tool pages and the css and js folders together in that folder.</p></div>';
+    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>index.html</b> (Edge or Chrome).</li></ol>'
+    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep index.html, the tool pages and the css and js folders together in that folder.</p></div>';
 });
 </script>
 </body>

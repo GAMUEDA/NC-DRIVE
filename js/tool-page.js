@@ -1,6 +1,6 @@
 /* =====================================================================================================
    TOOL PAGE — the frame shared by the four tool pages: link to NC Drive, log, progress
-   MAIN holds the main page's job ({job, parts:[{name, qty}], sheets, stale}) while nc_drive.html is open,
+   MAIN holds the main page's job ({job, parts:[{name, qty}], sheets, stale}) while index.html is open,
    and null when it isn't. Each tool works on its own; the parts that need the main page open it when needed.
    ===================================================================================================== */
 let MAIN = null;
@@ -28,7 +28,7 @@ async function refreshMain() {
   try { m = await NCLink.request('state', null, 800); } catch (e) {}
   setMain(m);
 }
-function openMain() { return openNamed('nc_drive.html', 'ncdrive-main'); }
+function openMain() { return openNamed('index.html', 'ncdrive-main'); }
 // Make sure the main page is open (opens it when it isn't — call this first thing in a click), then wait for it.
 async function ensureMain(ms) {
   if (!MAIN) openMain();
@@ -36,7 +36,7 @@ async function ensureMain(ms) {
   while (Date.now() - t0 < (ms || 10000)) {
     try { const m = await NCLink.request('state', null, 700); setMain(m); return m; } catch (e) {}
   }
-  throw new Error('NC Drive did not answer — open nc_drive.html from the same folder and try again.');
+  throw new Error('NC Drive did not answer — open index.html from the same folder and try again.');
 }
 
 function startToolPage(key) {

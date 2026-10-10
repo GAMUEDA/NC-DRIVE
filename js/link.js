@@ -1,5 +1,5 @@
 /* =====================================================================================================
-   LINK — how the main page (nc_drive.html) and the tool pages talk to each other
+   LINK — how the main page (index.html) and the tool pages talk to each other
    Uses a BroadcastChannel named "ncdrive": every NC Drive page open in the same browser, from the same folder,
    hears every message. Nothing leaves the computer.
      NCLink.request(type, data, ms) → Promise with the main page's answer (rejects if nobody answers in ms)

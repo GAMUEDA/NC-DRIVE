@@ -2,11 +2,11 @@
 
 DXF → nest → NC (Bodor) with PDF reading and a report sheet. Runs in Edge or Chrome straight from the folder; no install or build.
 
-Open `nc_drive.html`. The tools also run on their own and link to the main page when it is open:
+Open `index.html` (online: https://gamueda.github.io/NC-DRIVE/ once GitHub Pages is on). The tools also run on their own and link to the main page when it is open:
 
 | Page | Process |
 |---|---|
-| `nc_drive.html` | main screen: load, clean, nest, NC output, report (P1–P7) |
+| `index.html` | main screen: load, clean, nest, NC output, report (P1–P7) |
 | `nc_search.html` | P8 NC search |
 | `parts_list.html` | P9 parts list from PDF |
 | `copy_to_drive.html` | P10 copy parts to drive |
