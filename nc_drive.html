@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NC Drive</title>
+<!-- NC DRIVE main page: DXF → nest → NC → report. Code: js/ (see js/config.js for the map). Tools: nc_search.html, copy_to_drive.html, parts_list.html, erase_usb.html -->
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="css/ncdrive.css" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+  <div class="box" id="header">
+    <div class="brand"><h1>NC <span>DRIVE</span></h1>
+      <span class="muted sub mono" id="hdrSub">DXF → nest → NC → report</span></div>
+    <div class="actions">
+      <div class="hudReadout" aria-live="polite"><span class="hudState" id="hudState">IDLE</span><span class="hudClock" id="hudClock"></span></div>
+      <button class="ghost" id="loadBtn" title="Add .dxf, .nc or drawing .pdf files">Load files…</button>
+      <button id="nestBtn" disabled title="Nest every part, one nest per gauge">Nest</button>
+      <button class="ghost" id="zipBtn" disabled title="Every sheet's .nc file in one .zip">Download NC</button>
+      <button class="ghost" id="reportBtn" disabled title="The job report sheet">Report</button>
+      <button class="ghost" id="fs" title="Hide the browser bars (press F)">Full screen</button>
+      <button class="ghost" id="reset" title="Restore the original layout">Reset layout</button>
+    </div>
+    <input type="file" id="fileInput" accept=".dxf,.nc,.pdf" multiple hidden>
+  </div>
+
+  <div class="wall h" data-target="rows" data-edge="header" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize header"></div>
+
+  <div id="middle">
+    <div id="left">
+      <div class="box" id="listBox">
+        <div class="boxhead"><h2>Parts</h2><span class="muted mono" id="partCount" style="font-size:11px;"></span></div>
+        <div class="drop" id="drop">Drop .dxf, .nc or .pdf files here, or click to browse</div>
+        <div id="gaugeWarn"></div>
+        <ul class="list" id="partList"></ul>
+      </div>
+      <div class="wall h" data-target="split" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize lists"></div>
+      <div class="box" id="listBox2">
+        <div class="boxhead"><h2>Sheets</h2><span class="muted mono" id="sheetCount" style="font-size:11px;"></span></div>
+        <div id="staleNote"></div>
+        <ul class="list" id="sheetList"><li class="muted" style="font-size:12px;">No nest yet.</li></ul>
+      </div>
+    </div>
+    <div class="wall v" data-target="cols" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize list"></div>
+    <div class="box" id="main">
+      <div class="scope" aria-hidden="true"><svg viewBox="0 0 400 400">
+        <g fill="none" stroke="#22d3ee">
+          <circle cx="200" cy="200" r="196" stroke-opacity=".25" stroke-width="1"/>
+          <circle class="spin" cx="200" cy="200" r="188" stroke="#ff8a3d" stroke-opacity=".7" stroke-width="2" stroke-dasharray="2 9"/>
+          <circle class="spin2" cx="200" cy="200" r="176" stroke-opacity=".35" stroke-width="6" stroke-dasharray="60 24 8 24"/>
+          <circle cx="200" cy="200" r="150" stroke-opacity=".16" stroke-width="1"/>
+          <circle cx="200" cy="200" r="100" stroke-opacity=".12" stroke-width="1"/>
+          <circle cx="200" cy="200" r="50" stroke-opacity=".1" stroke-width="1"/>
+          <path d="M200 0V60M200 340V400M0 200H60M340 200H400" stroke-opacity=".35"/>
+          <path d="M200 120V280M120 200H280" stroke-opacity=".08"/>
+        </g></svg></div>
+      <div id="viewHead">
+        <h2 id="mainTitle">Preview</h2>
+        <div class="seg" id="viewSeg"><button data-v="sheet" class="on">Sheet</button><button data-v="report">Report</button></div>
+      </div>
+      <div id="view"><div class="empty">Load DXF files on the left (add the drawing PDFs too and the gauge is read from them).<br>Set quantities, then press <b>Nest</b>.<br>Each sheet gets its own .nc file, and the report sheet lists everything.</div></div>
+    </div>
+    <div class="wall v" data-target="cols" data-edge="right" tabindex="0" role="separator" aria-orientation="vertical" aria-label="Resize side panel"></div>
+    <div class="box" id="side">
+      <div class="sec">
+        <h2>System status</h2>
+        <div class="gauges">
+          <div class="gauge" id="gUse" title="Average material used on the nested sheets"><svg viewBox="0 0 100 100"><circle class="tick" cx="50" cy="50" r="47"/><circle class="trk" cx="50" cy="50" r="38"/><circle class="val" cx="50" cy="50" r="38"/></svg><div class="gv"><b>—</b><span>USE</span></div></div>
+          <div class="gauge" id="gNest" title="Pieces nested out of pieces required"><svg viewBox="0 0 100 100"><circle class="tick" cx="50" cy="50" r="47"/><circle class="trk" cx="50" cy="50" r="38"/><circle class="val" cx="50" cy="50" r="38"/></svg><div class="gv"><b>—</b><span>NESTED</span></div></div>
+          <div class="gauge" id="gGauge" title="Parts that have a gauge (thickness) set"><svg viewBox="0 0 100 100"><circle class="tick" cx="50" cy="50" r="47"/><circle class="trk" cx="50" cy="50" r="38"/><circle class="val" cx="50" cy="50" r="38"/></svg><div class="gv"><b>—</b><span>GAUGE</span></div></div>
+        </div>
+        <div class="readouts"><span>PARTS</span><b id="roParts">0</b><span>PIECES</span><b id="roPcs">0</b><span>SHEETS</span><b id="roSheets">0</b><span>NEST TIME</span><b id="roTime">—</b></div>
+      </div>
+      <div class="sec">
+        <h2>Job</h2>
+        <div class="field"><label for="jobIn">Job name</label><input class="txt" id="jobIn" placeholder="e.g. 3369"></div>
+      </div>
+      <div class="sec">
+        <h2>Machine</h2>
+        <div class="seg" id="bedSeg" style="width:100%;margin-bottom:8px;"><button data-b="0" class="on" style="flex:1;">4' × 10'</button><button data-b="1" style="flex:1;">6' × 14'</button></div>
+        <div class="field"><label for="sheetW">Sheet width</label><span><input class="num" id="sheetW" type="number" step="1"> mm</span></div>
+        <div class="field"><label for="sheetH">Sheet length</label><span><input class="num" id="sheetH" type="number" step="1"> mm</span></div>
+        <div class="hint mono" id="bedNote"></div>
+      </div>
+      <div class="sec">
+        <h2>Spacing</h2>
+        <div class="field"><label for="gapIn">Part gap</label><span><input class="num" id="gapIn" type="number" value="6.35" step="0.1"> mm</span></div>
+        <div class="field"><label for="marginIn">Sheet margin</label><span><input class="num" id="marginIn" type="number" value="10" step="0.5"> mm</span></div>
+        <label class="chk"><input type="checkbox" id="skelChk"> Skeleton cut 0.5" above the nest</label>
+      </div>
+      <div class="sec">
+        <h2>DXF clean-up</h2>
+        <label class="chk"><input type="checkbox" id="cleanChk" checked> Remove stray geometry</label>
+        <label class="chk"><input type="checkbox" id="bendChk" checked> Remove bend lines</label>
+        <label class="chk"><input type="checkbox" id="etchChk" checked> Detect etched text</label>
+        <label class="chk"><input type="checkbox" id="featChk" checked> Skip countersink / feature outlines</label>
+      </div>
+      <div class="sec">
+        <h2>NC output</h2>
+        <div class="hint">Bodor dialect: G92 zero, G21 metric, G91 incremental. One pierce per closed contour (G41 + M07 … M08 + G40), holes before the outer profile, etching as M11/M09 … M10/M12. Feed and power are set on the machine.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wall h" data-target="rows" data-edge="command" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize the bottom area"></div>
+
+  <div class="box" id="dock">
+    <h2 class="dockTitle">Tools</h2>
+    <div class="tiles" role="toolbar" aria-label="Tools">
+      <button class="tile" data-act="search" title="Opens nc_search.html — NC Search: find .nc / .dxf / .pdf by part number in your parts folders (Alt+1)">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 4h11l5 5v6"/><path d="M18 4v5h5"/><path d="M7 4v24h9"/><circle cx="22" cy="22" r="5"/><path d="M25.6 25.6 29 29"/><path d="M10 12h6M10 16h4"/></svg>
+        <span>NC Search</span></button>
+      <button class="tile" data-act="copy" title="Opens copy_to_drive.html — Copy Parts to Drive: copy each part's files (e.g. NC, PDF) to E:, the DXF when a type is missing (Alt+2)">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3v14"/><path d="m10.5 11.5 5.5 5.5 5.5-5.5"/><rect x="4" y="20" width="24" height="8" rx="1"/><path d="M8 24h2M23 24h1"/></svg>
+        <span>Copy to Drive</span></button>
+      <button class="tile" data-act="plist" title="Opens parts_list.html — PartsList from PDF: read part numbers and quantities from a parts list or work order (Alt+3)">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 3h13l5 5v21H7z"/><path d="M20 3v5h5"/><path d="M11 14h2M15 14h6M11 19h2M15 19h6M11 24h2M15 24h6"/></svg>
+        <span>Parts List PDF</span></button>
+      <button class="tile warn" data-act="usb" title="Opens erase_usb.html — Erase / Clear USB: wipe old programs off the USB stick and copy this job on (Alt+4)">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 3h10v7H11z"/><path d="M14 6h1M17 6h1"/><path d="M8 10h16v14a4 4 0 0 1-4 4h-8a4 4 0 0 1-4-4z"/><path d="m12.5 15.5 7 7M19.5 15.5l-7 7"/></svg>
+        <span>Erase USB</span></button>
+    </div>
+    <div class="procStatus" id="procStatus" aria-live="polite" title="Processing status: the dial is the current step, the bar is the whole task">
+      <div class="gauge" id="pDial"><svg viewBox="0 0 100 100"><circle class="tick" cx="50" cy="50" r="47"/><circle class="trk" cx="50" cy="50" r="38"/><circle class="val" cx="50" cy="50" r="38"/></svg><div class="gv"><b>—</b><span>STEP</span></div></div>
+      <div class="procInfo">
+        <div class="procHead"><span class="procTask" id="pTask">Idle</span><span class="procPct mono" id="pPct"></span></div>
+        <div class="procBar" id="procBar"><i id="pBar"></i></div>
+        <div class="procDetail mono" id="pDetail">No process running</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wall h" data-target="rows" data-edge="dock" tabindex="0" role="separator" aria-orientation="horizontal" aria-label="Resize between tools and command line"></div>
+
+  <div class="box" id="command">
+    <pre id="log"><span class="t">Type “help” for commands.</span>
+</pre>
+    <form id="cmdForm" autocomplete="off">
+      <input id="cmd" placeholder="Command — e.g. nest · qty 19992 24 · gap 6.35 · report · help">
+      <button type="submit">Run</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/config.js"></script>
+<script src="js/link.js"></script>
+<script src="js/pdf-reader.js"></script>
+<script src="js/p1-geometry.js"></script>
+<script src="js/p2-load.js"></script>
+<script src="js/p3-clean.js"></script>
+<script src="js/p4-pdf.js"></script>
+<script src="js/p5-nest.js"></script>
+<script src="js/p6-nc.js"></script>
+<script src="js/p7-report.js"></script>
+<script src="js/ui-core.js"></script>
+<script src="js/ui-job.js"></script>
+<script src="js/ui-progress.js"></script>
+<script src="js/main-tools.js"></script>
+<script src="js/start.js"></script>
+<script>
+/* folder check: this page needs css/ and js/ next to it. If they did not load (page opened on its own, or straight from inside the zip), say so instead of showing a broken screen. */
+addEventListener('load', function () {
+  var cssOk = !!getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  var jsOk = typeof CONFIG !== 'undefined';
+  if (cssOk && jsOk) return;
+  var miss = [cssOk ? '' : 'css/ncdrive.css', jsOk ? '' : 'js/ files'].filter(Boolean).join(' and ');
+  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Segoe UI,system-ui,sans-serif;overflow:auto';
+  document.body.innerHTML = '<div style="max-width:620px;padding:28px 32px;border:1px solid #22d3ee;box-shadow:0 0 24px rgba(34,211,238,.3);background:#07121d">'
+    + '<h1 style="margin:0 0 10px;font-size:22px;letter-spacing:.12em">NC <span style="color:#ff8a3d">DRIVE</span></h1>'
+    + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'
+    + '<p style="margin:0 0 6px">NC Drive is a folder of files that work together. To open it:</p>'
+    + '<ol style="margin:0 0 10px;padding-left:22px"><li>Right-click <b>nc-drive-project.zip</b> and choose <b>Extract All</b> (opening the page from inside the zip does not work).</li>'
+    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>nc_drive.html</b> (Edge or Chrome).</li></ol>'
+    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep nc_drive.html, the tool pages and the css and js folders together in that folder.</p></div>';
+});
+</script>
+</body>
+</html>

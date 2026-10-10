@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NC Search · NC Drive</title>
+<!-- P8 NC Search — runs on its own; links to nc_drive.html when it is open (js/link.js). -->
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="css/ncdrive.css" rel="stylesheet">
+</head>
+<body class="toolPage">
+<main class="tool page" id="dlgSearch">
+  <div class="dh"><a class="brandLink" href="nc_drive.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgSearchT">🔍 NC Search</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) nc_drive.html">Open NC Drive</button></div>
+  <div class="db">
+    <div>
+      <div class="row" style="margin-bottom:6px;"><b style="font-size:12px;">Parts folders</b><button class="ghost mini" id="srLink">Link a folder…</button><span class="note" id="srFsNote"></span></div>
+      <div class="chips" id="srRoots"></div>
+    </div>
+    <div>
+      <textarea class="ta" id="srTerms" placeholder="Part numbers or names — e.g.  19992 14738 110296  (or paste a column). Ctrl+Enter searches."></textarea>
+      <div class="row" style="margin-top:6px;"><button id="srGo">Search</button><button class="ghost" id="srStop" hidden>Stop</button>
+        <label class="chk" style="margin:0;"><input type="checkbox" id="srNc" checked> .nc</label><label class="chk" style="margin:0;"><input type="checkbox" id="srDxf" checked> .dxf</label><label class="chk" style="margin:0;"><input type="checkbox" id="srPdf" checked> .pdf</label>
+        <span class="note" id="srStatus"></span></div>
+    </div>
+    <div class="tblWrap" id="srWrap" hidden><table class="tbl" id="srTable"></table></div>
+  </div>
+  <div class="df"><span class="grow" id="srSel">For each part the newest .NC is ticked (else the .DXF), plus its drawing PDF.</span><button id="srLoad" disabled>Load selected</button></div>
+  <pre class="toolLog" id="toolLog" aria-label="Log"></pre>
+</main>
+<script src="js/common.js"></script>
+<script src="js/config.js"></script>
+<script src="js/link.js"></script>
+<script src="js/folders.js"></script>
+<script src="js/p8-search.js"></script>
+<script src="js/tool-page.js"></script>
+<script src="js/tool-search.js"></script>
+<script>
+/* folder check: this page needs css/ and js/ next to it. If they did not load (page opened on its own, or straight from inside the zip), say so instead of showing a broken screen. */
+addEventListener('load', function () {
+  var cssOk = !!getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  var jsOk = typeof CONFIG !== 'undefined';
+  if (cssOk && jsOk) return;
+  var miss = [cssOk ? '' : 'css/ncdrive.css', jsOk ? '' : 'js/ files'].filter(Boolean).join(' and ');
+  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Segoe UI,system-ui,sans-serif;overflow:auto';
+  document.body.innerHTML = '<div style="max-width:620px;padding:28px 32px;border:1px solid #22d3ee;box-shadow:0 0 24px rgba(34,211,238,.3);background:#07121d">'
+    + '<h1 style="margin:0 0 10px;font-size:22px;letter-spacing:.12em">NC <span style="color:#ff8a3d">DRIVE</span></h1>'
+    + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'
+    + '<p style="margin:0 0 6px">NC Drive is a folder of files that work together. To open it:</p>'
+    + '<ol style="margin:0 0 10px;padding-left:22px"><li>Right-click <b>nc-drive-project.zip</b> and choose <b>Extract All</b> (opening the page from inside the zip does not work).</li>'
+    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>nc_drive.html</b> (Edge or Chrome).</li></ol>'
+    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep nc_drive.html, the tool pages and the css and js folders together in that folder.</p></div>';
+});
+</script>
+</body>
+</html>
