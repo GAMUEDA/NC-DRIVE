@@ -410,3 +410,29 @@
   .usbOpts input[type=radio] { accent-color: var(--accent); margin: 0; }
   .usbActive .x { padding: 0 2px; font-size: 13px; color: var(--muted); box-shadow: none; }
   .usbActive .x:hover { color: var(--accent); }
+
+  /* ================= LIGHTER BACKGROUND =================
+     Change the colours of the whole screen here. Each box can also be given its own colour by its name:
+       HEADER  #header      top bar: NC DRIVE title, status, clock, Load files / Nest / Download NC / Report buttons
+       PARTS   #listBox     upper-left box: drop zone and the loaded parts
+       SHEETS  #listBox2    lower-left box: the nested sheets
+       PREVIEW #main        centre box: sheet drawing or report (#viewHead = its title row, #view = the drawing)
+       STATUS  #side        right box: System status dials, Job, Machine, Spacing, DXF clean-up, NC output
+       TOOLS   #dock        tools bar: 4 tool tiles (.tiles) and the processing status (#procStatus)
+       CONSOLE #command     bottom box: log (#log) and command line (#cmdForm)
+     e.g.  #side { background-color: #14304a; }   makes only the STATUS box lighter. */
+  :root {
+    --bg: #0b1a28; --panel: #10233a; --panel2: #163049; --line: #24597a; --muted: #8aaec2;
+    --sheet: #0f263b; --box-bg: rgba(18,38,60,.94);
+  }
+  body { background: radial-gradient(ellipse at 50% 40%, #1a3a58 0%, #0b1a28 75%) fixed, var(--bg); }
+  .box { background-color: var(--box-bg); border-color: rgba(34,211,238,.3); }
+  #header { background-color: rgba(14,32,50,.97); }
+  #command { background-color: rgba(10,26,42,.97); }
+  .part, .sheetItem { background-color: rgba(24,48,74,.85); }
+  input.num, input.txt, textarea.ta, #cmd { background: rgba(8,22,36,.9); }
+  .sheetSvg { background: rgba(12,32,50,.8); }
+  .empty { background: rgba(10,26,42,.85); }
+  dialog.tool, .tool.page { background: rgba(16,35,56,.98); }
+  .tbl th { background: rgba(16,35,56,.98); }
+  .pvBody, .usbPreview { background: rgba(10,26,42,.9); }
