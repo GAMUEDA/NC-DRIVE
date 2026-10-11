@@ -14,6 +14,47 @@ function updUsbCopy() {
 }
 const kb = b => (b / 1024).toFixed(1) + ' KB';
 
+// ---- options (All / NC / DXF / other files, sub-folders), kept as the default for the next run ----
+function usbOpts() {
+  const r = document.querySelector('input[name=usbShow]:checked');
+  return { show: r ? r.value : 'all', sub: $('#usbSub').checked };
+}
+function loadUsbOpts() {
+  let o = CONFIG.usb.defaults;
+  try { o = { ...o, ...JSON.parse(ls.get('usbOpts', '{}')) }; } catch (e) {}
+  const r = document.querySelector(`input[name=usbShow][value="${o.show}"]`) || document.querySelector('input[name=usbShow][value=all]');
+  r.checked = true;
+  $('#usbSub').checked = !!o.sub;
+}
+const saveUsbOpts = () => ls.set('usbOpts', JSON.stringify(usbOpts()));
+
+// ---- drive names: the browser only gives a folder's own name, so a drive letter can be added by hand (✎) ----
+function usbLabels() { try { return JSON.parse(ls.get('usbLabels', '{}')); } catch (e) { return {}; } }
+function driveLabel(h) {
+  if (/^[A-Z]:\\?$/i.test(h.name)) return h.name.toUpperCase().replace(/:$/, ':\\');
+  return usbLabels()[h.name] || '…\\' + h.name;
+}
+function setDriveLabel() {
+  if (!usb.handle) return;
+  const h = usb.handle, cur = driveLabel(h);
+  const v = prompt(`Where is "${h.name}"? Type its drive and folder, e.g. D:\\${h.name}`, cur.startsWith('…') ? `D:\\${h.name}` : cur);
+  if (v == null) return;
+  const labels = usbLabels();
+  if (v.trim()) labels[h.name] = v.trim(); else delete labels[h.name];
+  ls.set('usbLabels', JSON.stringify(labels));
+  renderDrives();
+  showActive();
+}
+// "Active: D:\NC · 12 files · 34.5 KB", shown right after the Refresh button
+function showActive(extra, state) {
+  if (!usb.handle) { $('#usbActive').innerHTML = '<span class="muted">No USB drive chosen</span>'; return; }
+  usb.activeExtra = extra != null ? extra : usb.activeExtra || '';
+  usb.activeState = state || usb.activeState || 'ready';
+  $('#usbActive').innerHTML = `<span class="dot ${usb.activeState}"></span>Active: <b class="mono">${esc(driveLabel(usb.handle))}</b> ${usb.activeExtra}`
+    + '<button class="x" id="usbLabel" title="Set the drive letter / folder shown here">✎</button>';
+  $('#usbLabel').onclick = setDriveLabel;
+}
+
 // ---- bottom progress bar ----
 function setUsbBar(task, done, total, state) {
   const bar = $('#usbBar'), frac = total ? done / total : 0;
@@ -32,7 +73,7 @@ async function renderDrives() {
   box.innerHTML = usb.drives.map((h, i) => {
     const on = usb.handle === h, st = usb.status[i];
     return `<label class="drv ${st}${on ? ' on' : ''}" title="${esc(h.name)}: ${STATUS_TXT[st]}"><input type="radio" name="usbDrv" value="${i}"${on ? ' checked' : ''}>`
-      + `<span class="dot ${st}"></span><b>${esc(h.name)}</b><small>${STATUS_TXT[st]}</small><button class="x" data-rm="${i}" title="Forget this drive">✕</button></label>`;
+      + `<span class="dot ${st}"></span><b class="mono">${esc(driveLabel(h))}</b><small>${STATUS_TXT[st]}</small><button class="x" data-rm="${i}" title="Forget this drive">✕</button></label>`;
   }).join('');
   box.querySelectorAll('input[name=usbDrv]').forEach(r => (r.onchange = () => selectDrive(+r.value)));
   box.querySelectorAll('[data-rm]').forEach(b => (b.onclick = e => { e.preventDefault(); forgetDrive(+b.dataset.rm); }));
@@ -71,7 +112,7 @@ async function pickUsb() {
 }
 function showEmpty() {
   usb.files = [];
-  $('#usbActive').innerHTML = '<span class="muted">No USB drive chosen</span>';
+  showActive();
   $('#usbView').hidden = true;
   $('#usbErase').disabled = true;
   $('#usbErase').textContent = 'Erase';
@@ -83,29 +124,29 @@ async function scanUsb() {
   disarmErase();
   if (!usb.handle) return showEmpty();
   if (!(await ensurePerm(usb.handle, 'readwrite'))) { $('#usbStatus').innerHTML = '<span class="bad">Permission to change the USB was not given.</span>'; return renderDrives(); }
-  const onlyNc = $('#usbOnlyNc').checked, sub = $('#usbSub').checked;
-  try { usb.files = await scanDrive(usb.handle, { onlyNc, sub }); }
+  const opts = usbOpts(), word = USB_SHOW[opts.show].word;
+  try { usb.files = await scanDrive(usb.handle, opts); }
   catch (e) {
     usb.files = [];
-    $('#usbActive').innerHTML = `<span class="dot missing"></span><b>${esc(usb.handle.name)}</b> <span class="bad">not plugged in</span>`;
+    showActive('<span class="bad">not plugged in</span>', 'missing');
     $('#usbView').hidden = true;
     $('#usbErase').disabled = true;
-    $('#usbStatus').innerHTML = `<span class="bad">Could not read ${esc(usb.handle.name)}: plug it in and press Refresh.</span>`;
+    $('#usbStatus').innerHTML = `<span class="bad">Could not read ${esc(driveLabel(usb.handle))}: plug it in and press Refresh.</span>`;
     return renderDrives();
   }
   await renderDrives();
   const n = usb.files.length, total = usb.files.reduce((a, f) => a + f.size, 0);
-  $('#usbActive').innerHTML = `<span class="dot ready"></span>Active: <b>${esc(usb.handle.name)}</b> <span class="mono">· ${n} ${onlyNc ? '.nc ' : ''}file${n === 1 ? '' : 's'} · ${kb(total)}</span>`;
+  showActive(`<span class="mono">· ${n} ${word}file${n === 1 ? '' : 's'}${opts.sub ? '' : ' (top folder)'} · ${kb(total)}</span>`, 'ready');
   $('#usbView').hidden = false;
   $('#usbView').classList.remove('erasing');
   $('#usbTable').innerHTML = '<thead><tr><th>#</th><th>File</th><th>Size</th><th>Modified</th><th>Status</th></tr></thead><tbody>'
     + (n ? usb.files.map((f, i) => `<tr data-i="${i}"><td class="n">${i + 1}</td><td class="mono">${esc(f.path)}</td><td class="n">${kb(f.size)}</td><td class="mono" style="font-size:11px;">${f.mod ? fmtDate(f.mod) : ''}</td><td class="st">on drive</td></tr>`).join('')
-      : `<tr><td colspan="5" class="muted">No ${onlyNc ? '.nc ' : ''}files — the USB is clear.</td></tr>`)
+      : `<tr><td colspan="5" class="muted">No ${word}files — the USB is clear.</td></tr>`)
     + '</tbody>';
   $('#usbTable').querySelectorAll('tr[data-i]').forEach(tr => (tr.onclick = () => { if (!usb.busy) previewFile(+tr.dataset.i); }));
   $('#usbErase').disabled = !n;
   $('#usbErase').textContent = n ? `Erase ${n} file${n > 1 ? 's' : ''}` : 'Erase';
-  $('#usbStatus').textContent = `${n} ${onlyNc ? '.nc ' : ''}file${n === 1 ? '' : 's'} on ${usb.handle.name}${onlyNc ? '' : ' — every file type is included'}`;
+  $('#usbStatus').textContent = `${n} ${word}file${n === 1 ? '' : 's'} on ${driveLabel(usb.handle)}${opts.show === 'all' ? ' — every file type is included' : ''}${opts.sub ? ', sub-folders included' : ''}`;
   if (n) await previewFile(0);
   else { $('#pvHead').textContent = 'Preview'; $('#pvBody').textContent = 'Nothing to preview.'; }
   updUsbCopy();
@@ -143,7 +184,7 @@ async function eraseUsb() {
     return;
   }
   disarmErase();
-  const files = usb.files, n = files.length, name = usb.handle.name;
+  const files = usb.files, n = files.length, name = driveLabel(usb.handle);
   const pause = Math.min(CONFIG.usb.eraseShowMs, 3000 / n); // long enough to see each file go, never more than ~3 s in all
   usb.busy = true;
   $('#usbErase').disabled = true; $('#usbPick').disabled = true; $('#usbRefresh').disabled = true;
@@ -177,7 +218,7 @@ async function eraseUsb() {
   usb.files = files.filter(f => fail.includes(f.path));
   $('#usbErase').disabled = !usb.files.length;
   $('#usbErase').textContent = usb.files.length ? `Erase ${usb.files.length} file${usb.files.length > 1 ? 's' : ''}` : 'Erase';
-  $('#usbActive').innerHTML = `<span class="dot ready"></span>Active: <b>${esc(name)}</b> <span class="mono">· ${usb.files.length} file${usb.files.length === 1 ? '' : 's'} left</span>`;
+  showActive(`<span class="mono">· ${usb.files.length} file${usb.files.length === 1 ? '' : 's'} left</span>`, 'ready');
   $('#usbStatus').innerHTML = `<span class="ok">Erased ${ok} file${ok === 1 ? '' : 's'}.</span>` + (fail.length ? ` <span class="bad">Could not erase: ${esc(fail.slice(0, 5).join(', '))}${fail.length > 5 ? '…' : ''}</span>` : '');
   updUsbCopy();
 }
@@ -193,7 +234,7 @@ async function copyJobToUsb() {
   if (!(await ensurePerm(usb.handle, 'readwrite'))) { $('#usbStatus').innerHTML = '<span class="bad">Permission to write to the USB was not given.</span>'; return; }
   usb.busy = true;
   updUsbCopy();
-  const total = job.files.length, name = usb.handle.name;
+  const total = job.files.length, name = driveLabel(usb.handle);
   setUsbBar(`Copying to ${name}`, 0, total);
   reportProgress('Copy job to USB', `${total} .nc files`, 0);
   let n = 0, error = null;
@@ -222,7 +263,7 @@ function startUsbPage() {
     usb.handle = at >= 0 ? usb.drives[at] : usb.drives[0] || null;
     $('#usbRefresh').disabled = !usb.handle;
     await renderDrives();
-    if (usb.handle) $('#usbActive').innerHTML = `<span class="dot ${usb.status[usb.drives.indexOf(usb.handle)]}"></span>Active: <b>${esc(usb.handle.name)}</b> <span class="muted">(press Refresh to list its files)</span>`;
+    if (usb.handle) showActive('<span class="muted">(press Refresh to list its files)</span>', usb.status[usb.drives.indexOf(usb.handle)]);
     else showEmpty();
     updUsbCopy();
   };
@@ -231,12 +272,13 @@ function startUsbPage() {
   NCLink.on('drive-changed', reloadDrives);
   $('#usbPick').onclick = pickUsb;
   $('#usbRefresh').onclick = scanUsb;
-  ['usbOnlyNc', 'usbSub'].forEach(id => ($('#' + id).onchange = () => { if (usb.handle) scanUsb(); }));
+  loadUsbOpts();
+  document.querySelectorAll('input[name=usbShow], #usbSub').forEach(el => (el.onchange = () => { saveUsbOpts(); if (usb.handle && !usb.busy) scanUsb(); }));
   $('#usbErase').onclick = eraseUsb;
   $('#usbCopy').onclick = copyJobToUsb;
   onMainChange(updUsbCopy);
   updUsbCopy();
 }
 
-window.NCDriveTool = { CONFIG, process: { scanDrive, driveStatus, readPreview, eraseFiles, writeJobToDrive }, usb, link: NCLink };
+window.NCDriveTool = { CONFIG, process: { scanDrive, USB_SHOW, driveStatus, readPreview, eraseFiles, writeJobToDrive }, usb, link: NCLink };
 startUsbPage();

@@ -14,10 +14,15 @@
   <div class="db">
     <div class="row usbBar"><button class="ghost mini" id="usbPick" title="Add a USB stick (or a folder on it) to the list">Add USB drive…</button><button class="ghost mini" id="usbRefresh" disabled title="List the files on the active drive again">Refresh</button><span class="usbActive" id="usbActive"><span class="muted">No USB drive chosen</span></span></div>
     <div class="usbDrives" id="usbDrives" hidden></div>
-    <div class="row">
+    <div class="row usbOpts">
+      <span class="optGroup" role="radiogroup" aria-label="Files to list and erase">
+        <label class="chk"><input type="radio" name="usbShow" value="all" checked> All files</label>
+        <label class="chk"><input type="radio" name="usbShow" value="nc"> Only NC files</label>
+        <label class="chk"><input type="radio" name="usbShow" value="dxf"> Only DXF files</label>
+        <label class="chk"><input type="radio" name="usbShow" value="other"> Only non-DXF and non-NC files</label>
+      </span>
+      <label class="chk"><input type="checkbox" id="usbSub" checked> Include sub-folders</label>
       <span class="muted" id="usbCount"></span>
-      <label class="chk" style="margin:0;"><input type="checkbox" id="usbOnlyNc" checked> Only .nc files</label>
-      <label class="chk" style="margin:0;"><input type="checkbox" id="usbSub"> Include subfolders</label>
     </div>
     <div class="usbView" id="usbView" hidden>
       <div class="tblWrap" id="usbWrap"><table class="tbl" id="usbTable"></table></div>

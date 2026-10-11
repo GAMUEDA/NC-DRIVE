@@ -1,6 +1,7 @@
 /* =====================================================================================================
    P11 · USB — list, erase and write .nc files on a USB stick / target drive
-   scanDrive(handle, {onlyNc, sub}) → [{dir, name, path, size, mod}]   files on the drive (sorted by path)
+   scanDrive(handle, {show, sub})   → [{dir, name, path, size, mod}]   files on the drive (sorted by path);
+                                                                        show = 'all' | 'nc' | 'dxf' | 'other' (USB_SHOW)
    driveStatus(handle)              → 'ready' | 'locked' | 'missing'    plugged in? ('locked' = needs a click to allow)
    readPreview(file, maxBytes)      → {text, binary, cut}               the start of a file, for the preview screen
    eraseFiles(files, onFile)        → {ok, fail:[paths]}               deletes files only, never folders;
@@ -8,12 +9,19 @@
    writeJobToDrive(handle, files)   → {written, error}                  files = [{name, text}] from makeJobNcFiles()
    ===================================================================================================== */
 
+// Which files each "show" option lists (and erases).
+const USB_SHOW = {
+  all: { label: 'All files', word: '', test: () => true },
+  nc: { label: 'Only .nc files', word: '.nc ', test: n => /\.nc$/i.test(n) },
+  dxf: { label: 'Only .dxf files', word: '.dxf ', test: n => /\.dxf$/i.test(n) },
+  other: { label: 'Only non-DXF and non-NC files', word: 'non-DXF/NC ', test: n => !/\.(nc|dxf)$/i.test(n) },
+};
 async function scanDrive(handle, opts) {
-  const onlyNc = !!opts.onlyNc, sub = !!opts.sub, out = [], U = CONFIG.usb;
+  const show = USB_SHOW[opts.show || (opts.onlyNc ? 'nc' : 'all')] || USB_SHOW.all, sub = !!opts.sub, out = [], U = CONFIG.usb;
   const walk = async (dir, path, depth) => {
     for await (const e of dir.values()) {
       if (e.kind === 'file') {
-        if (!onlyNc || /\.nc$/i.test(e.name)) {
+        if (show.test(e.name)) {
           let f = null;
           try { f = await e.getFile(); } catch (x) {}
           out.push({ dir, name: e.name, path: path + e.name, size: f ? f.size : 0, mod: f ? f.lastModified : 0 });

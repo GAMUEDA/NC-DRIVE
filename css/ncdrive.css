@@ -404,3 +404,9 @@
   .usbProg[hidden] { display: none; }
   .usbProg .procBar { height: 12px; }
   @media (max-width: 760px) { .usbView { grid-template-columns: 1fr; grid-template-rows: minmax(160px,1fr) minmax(140px,1fr); } }
+  .usbOpts { gap: 14px; }
+  .optGroup { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; padding: 4px 10px; border: 1px solid var(--line); }
+  .usbOpts .chk { margin: 0; align-items: center; }
+  .usbOpts input[type=radio] { accent-color: var(--accent); margin: 0; }
+  .usbActive .x { padding: 0 2px; font-size: 13px; color: var(--muted); box-shadow: none; }
+  .usbActive .x:hover { color: var(--accent); }
