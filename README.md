@@ -13,3 +13,5 @@ Open `index.html` (online: https://gamueda.github.io/NC-DRIVE/ once GitHub Pages
 | `erase_usb.html` | P11 erase / write USB |
 
 Shared code is in `js/` (start with `js/config.js`, which holds every setting and a map of the processes) and the look is in `css/ncdrive.css`.
+
+The STATUS box on the main page (`js/ui-status.js`) also holds the nest_admin 2 controls: add new parts to the current nest without moving placed parts, quantities by zone, pull parts by number from a linked parts folder, the laser rules (never-programmed numbers, fixed materials, DXF-only parts) and the settings lock. The rules and the admin key are in `CONFIG.rules` and `CONFIG.admin` in `js/config.js`.

@@ -437,6 +437,45 @@
   .tbl th { background: rgba(16,35,56,.98); }
   .pvBody, .usbPreview { background: rgba(10,26,42,.9); }
 
+  /* ================= STATUS BOX (#side) — the nest_admin 2 panel =================
+     Nest (#secNest) · Parts folder (#secLib) · Laser rules (#secRules) · settings lock (.lockRow) · zone grid (#zoneModal) */
+  #side button.wide { display: block; width: 100%; margin-bottom: 6px; }
+  #side button.addNest { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ink); border: 1px solid var(--ok); }
+  #side button.addNest:hover:not(:disabled) { background: color-mix(in srgb, var(--ok) 35%, transparent); }
+  #addInfo:not(:empty) { margin: -2px 0 8px; color: var(--ok); }
+  .btnRow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+  .libRoots { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+  .libRoot { display: flex; gap: 6px; align-items: center; font-size: 11px; min-width: 0; }
+  .libRoot .mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .txtArea { width: 100%; resize: vertical; background: rgba(8,22,36,.9); border: 1px solid var(--line); color: var(--ink); border-radius: 4px; padding: 5px 6px; font: 12px "Share Tech Mono", monospace; }
+  .txtArea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  #libResult:not(:empty) { margin-top: 4px; }
+  .ruleChips { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+  .rchip { display: inline-flex; gap: 2px; align-items: center; font-size: 11px; padding: 1px 8px; border: 1px solid var(--line); border-radius: 10px; background: rgba(8,22,36,.6); }
+  .rchip.locked { border-color: var(--bad); }
+  .rchip .x { font-size: 11px; padding: 0 0 0 2px; }
+  #fixedNote b { color: var(--ink); font-weight: 600; }
+  .lockRow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line); }
+  #side.locked input:disabled { opacity: .55; cursor: not-allowed; }
+  #side.locked .chk:has(input:disabled) { cursor: not-allowed; opacity: .75; }
+  .sheetSvg path.added, svg path.added { stroke-width: 2.2; fill: color-mix(in srgb, var(--ok) 18%, transparent); }
+  .zmodal { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
+  .zmodal.open { display: flex; }
+  .zpanel { max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; padding: 12px 14px; background-color: rgba(16,35,56,.98); }
+  .zhead { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+  .zscroll { overflow: auto; min-height: 0; }
+  .zgrid { border-collapse: collapse; font-size: 12px; }
+  .zgrid th, .zgrid td { border: 1px solid var(--line); padding: 3px 5px; text-align: center; }
+  .zgrid th { background: rgba(16,35,56,.98); position: sticky; top: 0; z-index: 1; }
+  .zgrid th input.zn { width: 96px; text-align: center; margin-bottom: 3px; }
+  .zgrid .zp { text-align: left; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .zgrid .zp small { display: block; color: var(--muted); font-size: 10px; }
+  .zgrid input.zq { width: 64px; text-align: center; }
+  .zgrid input.zq.bad { border-color: var(--bad); }
+  .zgrid tfoot td { font-weight: 600; color: var(--accent); }
+  .zfoot { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .zfoot .zwarn { flex: 1; font-size: 11px; color: var(--warn); }
+
   /* ================= BOX LINES =================
      --box-line        outline and corner brackets of every box (HEADER, PARTS, SHEETS, PREVIEW, STATUS, TOOLS, CONSOLE)
      --box-line-width  thickness of that outline

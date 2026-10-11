@@ -25,7 +25,8 @@
      js/p9-partslist.js   P9  parts list / work order → lines             readPartsList(), parsePartsRows()
      js/p10-copy.js       P10 copy files, DXF when a type is missing      copyPartsToDrive(), planCopy()
      js/p11-usb.js        P11 list / erase / write files on a stick       scanDrive(), eraseFiles(), writeJobToDrive()
-     js/ui-core.js, ui-job.js, ui-progress.js, main-tools.js, start.js   main page screen
+     js/ui-core.js, ui-job.js, ui-progress.js, ui-status.js, main-tools.js, start.js   main page screen
+     (ui-status.js = STATUS box: add to the current nest, zones, parts folder, laser rules, settings lock)
      js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js   tool page screens
 
    P1–P11 never touch the screen: they take values and return results, so each one can be changed or
@@ -118,6 +119,17 @@ const CONFIG = {
   // ---- P11 USB ----
   usb: { defaults: { show: 'all', sub: true }, // Erase USB options on first run; after that the last ones used are kept
     eraseConfirmMs: 4000, previewBytes: 16384, eraseShowMs: 120, maxDepth: 6, skipFolders: /^(System Volume Information|\$RECYCLE\.BIN)$/i },
+
+  // ---- STATUS box: rules and the settings lock (from nest_admin 2) ----
+  rules: {
+    omit: ['14443', '13824', '13824W', '18946'], // never programmed (not for the laser), with all their variants; more can be added in Admin mode
+    fixedMaterial: { '14031': '14ga Satincoat', '14029': '14ga Satincoat', '19273': '14ga Satincoat' }, // always this gauge, whatever the drawing says
+    railMaterial: '14ga Satincoat', // ON-… header / cornice / sill rails (…_HR, …_CR, …_SR)
+    dxfOnly: ['18610'], // always cut from the DXF, never from an .NC (Pull parts)
+  },
+  // Spacing and DXF clean-up are locked until the admin key is typed (click 🔒 at the bottom of the STATUS box).
+  // The unlock is remembered by this browser. lockedByDefault: false = never lock.
+  admin: { key: 'nest-admin-3369', lockedByDefault: true, lockIds: ['gapIn', 'marginIn', 'skelChk', 'cleanChk', 'bendChk', 'etchChk', 'featChk'] },
 
   // ---- screen ----
   // The screen is drawn for a designW × designH window and scaled to fit the real window each time a page opens

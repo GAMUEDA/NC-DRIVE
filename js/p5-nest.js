@@ -3,6 +3,7 @@
    nestJob(parts, settings, onProgress) → {groups:[{gauge, r, req}], ms}   one nest per gauge (the Nest button)
    groupByGauge(parts)                  → [{gauge, list}]                   parts with qty > 0, by gauge
    nestGroup(list, mat, gap, margin, opts) → {sheets, skipped:Map(part→count), bed, grid}
+   addToGroup(r, adds, opts)            → pieces gained per sheet: new copies fitted around a nest without moving anything
    Each part is rasterised at cell size c (gap/3, 1.5–6 mm); holes stay open so small parts can sit inside them,
    and the outline is grown by the gap. Placement and overlap tests are bit operations on packed rows.
    Largest parts go first; each goes to the lowest-then-leftmost spot on the first sheet it fits, trying 0°/180° first
@@ -167,27 +168,32 @@ function findPos(S, R, step, band) {
 
 const tick = () => new Promise(r => setTimeout(r, 0));
 
-// Nest one gauge group. list: parts with .qty. mat: {w,h} mm. opts: {skeleton, onProgress(n, total)}.
-async function nestGroup(list, mat, gap, margin, opts) {
-  opts = opts || {};
+// The raster grid for one material, gap and margin: cell size, gap in cells, sheet size in cells, and a raster cache.
+function nestGrid(mat, gap, margin) {
   const N = CONFIG.nest;
   const c = Math.min(N.cellMax, Math.max(N.cellMin, gap / N.cellPerGap)), k = Math.max(1, Math.ceil(gap / c)), P = k + 1;
-  const Wc = Math.floor(mat.w / c), Hc = Math.floor(mat.h / c), mc = Math.ceil(margin / c);
   const cache = new Map();
   const getR = (p, a) => { let m = cache.get(p); if (!m) { m = {}; cache.set(p, m); } return m[a] || (m[a] = rasterizePart(p, a, c, k)); };
+  return { c, k, P, margin, gap, Wc: Math.floor(mat.w / c), Hc: Math.floor(mat.h / c), mc: Math.ceil(margin / c), getR };
+}
 
-  // one entry per piece, biggest first; each part's base angle is the one that lies flattest
+// One entry per piece, biggest first; each part's base angle is the one that lies flattest. adds: [{p, n}]
+function pieceList(adds, getR) {
   const inst = [];
-  for (const p of list) {
-    if (!(p.qty > 0)) continue;
+  for (const { p, n } of adds) {
+    if (!(n > 0)) continue;
     const R0 = getR(p, 0), R90 = getR(p, 90);
     p._ar = R0.area;
     p._base = R0.bh <= R90.bh ? 0 : 90;
-    for (let i = 0; i < p.qty; i++) inst.push(p);
+    for (let i = 0; i < n; i++) inst.push(p);
   }
-  inst.sort((a, b) => b._ar - a._ar);
+  return inst.sort((a, b) => b._ar - a._ar);
+}
 
-  const sheets = [], skipped = new Map(), tol = N.tieTol;
+// Place the pieces on the sheets: each goes to the lowest-then-leftmost spot on the first sheet it fits, new sheets as needed.
+// Returns the sheets, plus the pieces that fit nowhere (skipped: Map part → count). added = flag the new items (Add to nest).
+async function placePieces(G, inst, sheets, skipped, opts, added) {
+  const N = CONFIG.nest, getR = G.getR, tol = N.tieTol;
   const pick = (S, p, angs) => {
     let best = null;
     for (const a of angs) {
@@ -206,18 +212,19 @@ async function nestGroup(list, mat, gap, margin, opts) {
     if (spun && (!best || spun.y < best.y - mg)) best = spun;
     return best;
   };
-
   let lastTick = Date.now();
   for (let n = 0; n < inst.length; n++) {
     const p = inst[n];
     if (opts.onProgress && Date.now() - lastTick > N.progressMs) { opts.onProgress(n, inst.length); await tick(); lastTick = Date.now(); }
     for (let at = 0; at <= sheets.length; at++) {
-      const fresh = at === sheets.length, S = fresh ? newSheet(Wc, Hc, P, mc) : sheets[at];
+      const fresh = at === sheets.length, S = fresh ? newSheet(G.Wc, G.Hc, G.P, G.mc) : sheets[at];
       if (!fresh && S._full && S._full.has(p)) continue; // an identical copy already failed here: skip straight on
       const best = tryAngles(S, p);
       if (best) {
         stampPart(S, best.R, best.x, best.y);
-        S.items.push({ p, R: best.R, rot: best.R.ang, x: best.x * c, y: best.y * c });
+        const it = { p, R: best.R, rot: best.R.ang, x: best.x * G.c, y: best.y * G.c };
+        if (added) { it.added = true; S.added = (S.added || 0) + 1; }
+        S.items.push(it);
         if (fresh) sheets.push(S);
         break;
       }
@@ -226,19 +233,45 @@ async function nestGroup(list, mat, gap, margin, opts) {
     }
   }
   if (opts.onProgress) opts.onProgress(inst.length, inst.length);
+}
 
-  // finish each sheet: use, length used, optional skeleton cut
-  const usableTop = (Hc - mc) * c;
+// Finish each sheet: use, length used, optional skeleton cut; then free the raster once the layout is final.
+function finishSheets(sheets, G, mat, skeleton) {
+  const N = CONFIG.nest, c = G.c, usableTop = (G.Hc - G.mc) * c;
   for (const S of sheets) {
     let a = 0, top = 0;
     for (const it of S.items) { a += it.R.area; top = Math.max(top, it.y + it.R.bh * c); }
     S.util = (a * c * c) / (mat.w * mat.h);
-    S.used = top + margin;
+    S.used = top + G.margin;
     S.skeleton = [];
-    if (opts.skeleton && S.items.length) { const y = top + N.skeletonOffset; if (y < usableTop) S.skeleton.push({ y, x0: mc * c, x1: (Wc - mc) * c }); }
-    delete S.bits; delete S._lb; delete S._col; delete S._full; // free the raster once the layout is final
+    if (skeleton && S.items.length) { const y = top + N.skeletonOffset; if (y < usableTop) S.skeleton.push({ y, x0: G.mc * c, x1: (G.Wc - G.mc) * c }); }
+    delete S.bits; delete S._lb; delete S._col; delete S._full;
   }
-  return { sheets, skipped, bed: mat, grid: { c, k, margin, gap } };
+}
+
+// Nest one gauge group. list: parts with .qty. mat: {w,h} mm. opts: {skeleton, onProgress(n, total)}.
+async function nestGroup(list, mat, gap, margin, opts) {
+  opts = opts || {};
+  const G = nestGrid(mat, gap, margin), sheets = [], skipped = new Map();
+  await placePieces(G, pieceList(list.map(p => ({ p, n: p.qty })), G.getR), sheets, skipped, opts, false);
+  finishSheets(sheets, G, mat, opts.skeleton);
+  return { sheets, skipped, bed: mat, grid: { c: G.c, k: G.k, margin, gap }, _G: G, skeleton: !!opts.skeleton };
+}
+
+// ADD TO THE CURRENT NEST — parts already placed are never moved. Each sheet's occupancy is rebuilt from where its parts
+// really are, then the new copies go into free space on the existing sheets first, then onto new sheets.
+// r: a nestGroup result. adds: [{p, n}]. → pieces gained per sheet (new sheets count from 0)
+async function addToGroup(r, adds, opts) {
+  opts = opts || {};
+  const G = r._G || (r._G = nestGrid(r.bed, r.grid.gap, r.grid.margin)), before = r.sheets.map(S => S.items.length);
+  for (const S of r.sheets) {
+    const T = newSheet(G.Wc, G.Hc, G.P, G.mc);
+    for (const it of S.items) stampPart(T, it.R, Math.round(it.x / G.c), Math.round(it.y / G.c));
+    S.bits = T.bits; S.sw = T.sw; S.Wc = T.Wc; S.Hc = T.Hc; S.P = T.P;
+  }
+  await placePieces(G, pieceList(adds, G.getR), r.sheets, r.skipped, opts, true);
+  finishSheets(r.sheets, G, r.bed, r.skeleton);
+  return r.sheets.map((S, i) => S.items.length - (before[i] || 0));
 }
 
 // Parts with a quantity, grouped by gauge (in the order the gauges first appear).

@@ -72,34 +72,60 @@
         </div>
         <div class="readouts"><span>PARTS</span><b id="roParts">0</b><span>PIECES</span><b id="roPcs">0</b><span>SHEETS</span><b id="roSheets">0</b><span>NEST TIME</span><b id="roTime">—</b></div>
       </div>
+      <div class="sec" id="secNest">
+        <h2>Nest</h2>
+        <button class="wide addNest" id="addNestBtn" hidden title="Keeps every part that is already placed exactly where it is. Only the new parts are fitted: into free space on the existing sheets first, then onto new sheets.">Add new parts to the current nest</button>
+        <div class="hint" id="addInfo"></div>
+        <button class="ghost wide" id="zoneBtn" disabled title="Parts down the side, zones across the top: type each zone's quantity and the part's total is the sum">Enter quantities by zone…</button>
+        <button class="ghost wide" id="clearAllBtn" disabled title="Remove every part (click twice)">Clear all parts</button>
+      </div>
       <div class="sec">
         <h2>Job</h2>
         <div class="field"><label for="jobIn">Job name</label><input class="txt" id="jobIn" placeholder="e.g. 3369"></div>
       </div>
+      <div class="sec" id="secLib">
+        <h2>Parts folder</h2>
+        <div class="btnRow"><button class="ghost mini" id="libLink" title="Link a parts folder (Edge / Chrome). Linking is instant: nothing is scanned.">Link parts folder…</button><button class="ghost mini" id="libReconnect" hidden>Reconnect</button></div>
+        <div class="libRoots" id="libRoots"></div>
+        <textarea class="txtArea" id="libNums" rows="2" placeholder="Part numbers, e.g. 19992 14738 110296 (or paste a column). Takes the .NC if there is one, else the .DXF, plus the PDF"></textarea>
+        <div class="btnRow"><button class="ghost mini" id="libGo" disabled>Pull parts from folder</button><span class="hint">Ctrl+Enter</span></div>
+        <div class="hint" id="libResult"></div>
+      </div>
       <div class="sec">
         <h2>Machine</h2>
         <div class="seg" id="bedSeg" style="width:100%;margin-bottom:8px;"><button data-b="0" class="on" style="flex:1;">4' × 10'</button><button data-b="1" style="flex:1;">6' × 14'</button></div>
-        <div class="field"><label for="sheetW">Sheet width</label><span><input class="num" id="sheetW" type="number" step="1"> mm</span></div>
-        <div class="field"><label for="sheetH">Sheet length</label><span><input class="num" id="sheetH" type="number" step="1"> mm</span></div>
+        <div class="hint" style="margin-bottom:5px;">Material on hand (the sheet you are cutting from)</div>
+        <div class="field"><label for="sheetW">Width</label><span><input class="num" id="sheetW" type="number" step="1"> mm</span></div>
+        <div class="field"><label for="sheetH">Length</label><span><input class="num" id="sheetH" type="number" step="1"> mm</span></div>
         <div class="hint mono" id="bedNote"></div>
+        <button class="ghost mini" id="resetSheet" title="Material size = the machine bed">Reset to bed size</button>
       </div>
       <div class="sec">
         <h2>Spacing</h2>
         <div class="field"><label for="gapIn">Part gap</label><span><input class="num" id="gapIn" type="number" value="6.35" step="0.1"> mm</span></div>
         <div class="field"><label for="marginIn">Sheet margin</label><span><input class="num" id="marginIn" type="number" value="10" step="0.5"> mm</span></div>
         <label class="chk"><input type="checkbox" id="skelChk"> Skeleton cut 0.5" above the nest</label>
+        <div class="hint">One straight cut across the usable width above the tallest part on each sheet frees the unused strip in one piece. Parts are never mirrored, so etching stays on the right side.</div>
       </div>
       <div class="sec">
         <h2>DXF clean-up</h2>
-        <label class="chk"><input type="checkbox" id="cleanChk" checked> Remove stray geometry</label>
-        <label class="chk"><input type="checkbox" id="bendChk" checked> Remove bend lines</label>
+        <label class="chk"><input type="checkbox" id="cleanChk" checked> Remove stray geometry (marks near 0,0, etc.)</label>
+        <label class="chk"><input type="checkbox" id="bendChk" checked> Remove bend lines (full-span, unconnected)</label>
         <label class="chk"><input type="checkbox" id="etchChk" checked> Detect etched text</label>
         <label class="chk"><input type="checkbox" id="featChk" checked> Skip countersink / feature outlines</label>
+      </div>
+      <div class="sec" id="secRules">
+        <h2>Laser rules</h2>
+        <div class="hint">Never programmed, can't be done on the laser:</div>
+        <div class="ruleChips" id="omitChips"></div>
+        <div class="btnRow" id="omitAdmin" hidden><input class="txt" id="omitIn" placeholder="add a number" style="max-width:110px"><button class="ghost mini" id="omitAdd">Add</button><button class="ghost mini" id="omitCopy">Copy list</button></div>
+        <div class="hint" id="fixedNote" style="margin-top:6px;"></div>
       </div>
       <div class="sec">
         <h2>NC output</h2>
         <div class="hint">Bodor dialect: G92 zero, G21 metric, G91 incremental. One pierce per closed contour (G41 + M07 … M08 + G40), holes before the outer profile, etching as M11/M09 … M10/M12. Feed and power are set on the machine.</div>
       </div>
+      <div class="lockRow"><button class="ghost mini" id="lockStatus" title="Spacing and DXF clean-up settings">🔒 Settings locked</button><span id="unlockRow" hidden><input class="txt" id="unlockKey" type="password" placeholder="admin key" style="max-width:100px"><button class="ghost mini" id="unlockGo">Go</button></span></div>
     </div>
   </div>
 
@@ -142,11 +168,20 @@
     </form>
   </div>
 </div>
+<div class="zmodal" id="zoneModal" role="dialog" aria-modal="true" aria-label="Quantities by zone">
+  <div class="zpanel box">
+    <div class="zhead"><h2>Quantities by zone</h2><span class="hint">Tab → next zone · Enter → next part · paste a block from Excel to fill many cells · <span class="mono">12+8</span> or <span class="mono">3x4</span> work in any cell</span></div>
+    <div class="zscroll"><table class="zgrid" id="zoneGrid"></table></div>
+    <div class="zfoot"><button class="ghost mini" id="zAdd">+ Zone</button><button class="ghost mini" id="zClear">Clear all quantities</button><span class="zwarn" id="zWarn"></span><button id="zDone">Done</button></div>
+  </div>
+</div>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="js/common.js"></script>
 <script src="js/config.js"></script>
 <script src="js/link.js"></script>
+<script src="js/folders.js"></script>
 <script src="js/pdf-reader.js"></script>
 <script src="js/p1-geometry.js"></script>
 <script src="js/p2-load.js"></script>
@@ -158,6 +193,8 @@
 <script src="js/ui-core.js"></script>
 <script src="js/ui-job.js"></script>
 <script src="js/ui-progress.js"></script>
+<script src="js/p8-search.js"></script>
+<script src="js/ui-status.js"></script>
 <script src="js/main-tools.js"></script>
 <script src="js/start.js"></script>
 <script>

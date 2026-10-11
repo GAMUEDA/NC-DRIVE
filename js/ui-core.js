@@ -228,6 +228,7 @@ COMMANDS['?'] = COMMANDS.help;
 COMMANDS.partslist = COMMANDS.plist;
 
 function setSpacing(which, val) {
+  if (typeof isAdmin === 'function' && !isAdmin()) return log('spacing is locked — type: unlock <admin key>', 'bad');
   const v = parseFloat(val);
   if (!(v >= 0)) return log(`usage: ${which} <mm>`, 'bad');
   $('#' + which + 'In').value = v; markStale(); log(`${which} = ${v} mm`, 'ok');
@@ -254,10 +255,10 @@ function setBed(b) {
   markStale();
 }
 function updateBedNote() {
-  const b = CONFIG.beds[S.bed], m = getMaterial(), over = (m.w > b.w + 0.5 || m.h > b.h + 0.5) && !(m.h <= b.w + 0.5 && m.w <= b.h + 0.5);
-  $('#bedNote').innerHTML = `bed ${Math.round(b.w)} × ${Math.round(b.h)} mm${S.sheetCustom ? ' · <a href="#" id="bedResetLink" style="color:var(--accent)">reset to bed</a>' : ''}${over ? '<br><span style="color:var(--bad)">sheet is larger than the bed</span>' : ''}`;
-  const l = $('#bedResetLink');
-  if (l) l.onclick = e => { e.preventDefault(); S.sheetCustom = false; setBed(S.bed); };
+  const b = CONFIG.beds[S.bed], m = getMaterial(), overW = m.w > b.w + 0.5, overH = m.h > b.h + 0.5, fitsRot = m.h <= b.w + 0.5 && m.w <= b.h + 0.5;
+  $('#bedNote').innerHTML = `machine bed: ${Math.round(b.w)} × ${Math.round(b.h)} mm` +
+    ((overW || overH) && !fitsRot ? '<br><span style="color:var(--bad)">⚠ material is larger than the bed both ways</span>' : overW || overH ? '<br><span style="color:var(--warn)">fits rotated 90° on the bed</span>' : '');
+  $('#resetSheet').disabled = !S.sheetCustom;
 }
 // Anything that changes the nest marks the last nest out of date.
 function markStale() { if (S.groups.length) { S.stale = true; renderSheets(); } }
@@ -268,5 +269,6 @@ function wireSettings() {
   // a clean-up option changed: re-clean every part (P3)
   ['cleanChk', 'bendChk', 'etchChk', 'featChk'].forEach(id => $('#' + id).addEventListener('change', () => { S.parts.forEach(p => cleanPart(p, cleanOpts())); markStale(); renderParts(); }));
   $('#jobIn').addEventListener('input', () => { if (S.view === 'report') renderView(); announceChange(); });
+  $('#resetSheet').onclick = () => { S.sheetCustom = false; setBed(S.bed); };
   setBed(0);
 }

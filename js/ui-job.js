@@ -10,7 +10,7 @@ function applyDrawingToParts(entry) {
   return hit;
 }
 function partNotes(p) {
-  return [p.removed && `${p.removed} stray removed`, p.bendRemoved && `${p.bendRemoved} bend line${p.bendRemoved > 1 ? 's' : ''} removed`, p.etchFound && `etch text found`, p.featSkipped && `${p.featSkipped} feature outline${p.featSkipped > 1 ? 's' : ''} skipped`].filter(Boolean);
+  return [p.removed && `${p.removed} stray removed`, p.bendRemoved && `${p.bendRemoved} bend line${p.bendRemoved > 1 ? 's' : ''} removed`, p.etchFound && `etch text found`, p.featSkipped && `${p.featSkipped} feature outline${p.featSkipped > 1 ? 's' : ''} skipped`, p._fixed && `gauge fixed by the laser rules`].filter(Boolean);
 }
 async function handleFiles(files) {
   // PDFs first, so a drawing dropped together with its DXF is already known when the DXF arrives
@@ -33,10 +33,13 @@ async function handleFiles(files) {
     }
     if (!lower.endsWith('.dxf') && !lower.endsWith('.nc')) { log(`${f.name}: not a .dxf, .nc or .pdf — skipped`, 'warn'); continue; }
     const name = f.name.replace(/\.(dxf|nc)$/i, '');
+    const om = omitHitName(f.name);
+    if (om) { log(`${f.name}: ${om} is never programmed (laser rules) — skipped`, 'warn'); continue; }
     if (S.parts.some(p => p.name.toLowerCase() === name.toLowerCase())) { log(`${name} is already loaded — change its quantity instead`, 'warn'); continue; }
     const r = await loadPartFile(f, cleanOpts(), S.pdfMats);
     if (r.error) { log(r.error, r.kind); continue; }
     const part = Object.assign({ id: 'p' + ++S.idc }, r.part);
+    applyPartRules(part);
     S.parts.push(part);
     added++;
     const notes = partNotes(part);
@@ -83,7 +86,7 @@ function sheetSvg(sh, bed, margin, small) {
   for (const it of sh.items) {
     let d = '';
     for (const pl of it.R.polys) d += pl.pts.map(([X, Y], j) => `${j ? 'L' : 'M'}${(X - it.R.minx + it.x).toFixed(1)} ${(Y - it.R.miny + it.y).toFixed(1)}`).join('') + (pl.closed ? 'Z' : '');
-    g += `<path d="${d}" stroke="${partColor(it.p.name)}"><title>${esc(it.p.name)} · ${it.rot}°</title></path>`;
+    g += `<path d="${d}" stroke="${partColor(it.p.name)}"${it.added ? ' class="added"' : ''}><title>${esc(it.p.name)} · ${it.rot}°${it.added ? ' · added to the nest' : ''}</title></path>`;
   }
   let sk = '';
   for (const c of sh.skeleton || []) sk += `<line x1="${c.x0}" y1="${c.y}" x2="${c.x1}" y2="${c.y}" stroke="var(--bad)" stroke-dasharray="20 12"/>`;
@@ -106,6 +109,7 @@ function sheetLegend(sh) {
 function renderParts() {
   announceChange();
   if (typeof updateHud === 'function') try { updateHud(); } catch (e) {}
+  if (typeof updateStatusPanel === 'function') try { updateStatusPanel(); } catch (e) {}
   const list = $('#partList'), mat = getMaterial();
   const total = S.parts.reduce((a, p) => a + (p.qty || 0), 0);
   $('#partCount').textContent = S.parts.length ? `${S.parts.length} parts · ${total} pcs` : '';
@@ -150,6 +154,8 @@ function wirePartsPanel() {
 async function nestAll() {
   if (S.busy) return;
   if (!S.parts.length) { log('no parts to nest', 'bad'); return; }
+  const banned = S.parts.filter(p => omitHitName(p.name));
+  if (banned.length) { S.parts = S.parts.filter(p => !banned.includes(p)); log(`removed ${banned.length} part${banned.length > 1 ? 's' : ''} on the never-programmed list before nesting: ${banned.map(p => p.name).join(', ')}`, 'warn'); renderParts(); if (!S.parts.length) return; }
   const set = nestSettingsFromPanel(), byGauge = groupByGauge(S.parts);
   if (!byGauge.length) { log('every quantity is 0', 'bad'); return; }
   S.busy = true;
@@ -190,6 +196,7 @@ async function nestAll() {
 function renderSheets() {
   announceChange();
   if (typeof updateHud === 'function') try { updateHud(); } catch (e) {}
+  if (typeof updateStatusPanel === 'function') try { updateStatusPanel(); } catch (e) {}
   const ul = $('#sheetList'), flat = flatSheets();
   $('#sheetCount').textContent = flat.length ? `${flat.length} sheet${flat.length > 1 ? 's' : ''}${S.nestMs ? ' · ' + (S.nestMs / 1000).toFixed(2) + ' s' : ''}` : '';
   $('#staleNote').innerHTML = S.stale ? '<div class="staleNote">Parts or settings changed since this nest — press Nest again.</div>' : '';

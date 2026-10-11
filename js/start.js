@@ -13,6 +13,7 @@ function startNcDrive() {
   wireToolsDock();
   wireToolLink();
   wireProgress();
+  wireStatusPanel();
   startClock();
   renderParts();
   renderSheets();
@@ -33,14 +34,16 @@ window.NCDrive = {
     // P4 PDF + material
     readDrawingPdf, readPdfTitleBlock, normalizeMaterial, pdfMatchesPart, hasGauge,
     // P5 nesting
-    nestJob, groupByGauge, nestGroup, rasterizePart,
+    nestJob, groupByGauge, nestGroup, addToGroup, rasterizePart,
+    // STATUS box rules
+    omitHitName, fixedMaterialOf, nestDeltas,
     // P6 NC output
     makeSheetNc, makeJobNcFiles, makeJobZip, ncFileName, entitiesToLoops,
     // P7 report
     reportData, reportHtml, reportCsv,
   },
   // screen actions (same as the buttons / commands)
-  ui: { handleFiles, nestAll, runCommand, renderParts, renderSheets, renderView, downloadZip, downloadCSV, openTool, applyQuantities },
+  ui: { handleFiles, nestAll, runCommand, renderParts, renderSheets, renderView, downloadZip, downloadCSV, openTool, applyQuantities, addToCurrentNest, openZoneGrid, pullParts, unlockSettings, lockSettings },
   link: NCLink,
 };
 
