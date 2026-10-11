@@ -436,3 +436,18 @@
   dialog.tool, .tool.page { background: rgba(16,35,56,.98); }
   .tbl th { background: rgba(16,35,56,.98); }
   .pvBody, .usbPreview { background: rgba(10,26,42,.9); }
+
+  /* ================= BOX LINES =================
+     --box-line        outline and corner brackets of every box (HEADER, PARTS, SHEETS, PREVIEW, STATUS, TOOLS, CONSOLE)
+     --box-line-width  thickness of that outline
+     --gap-line        the thin line in the gap between boxes (the walls you drag to resize) */
+  :root { --box-line: #ffd23f; --box-line-width: 3px; --gap-line: #b8c2cc; }
+  .box { border: var(--box-line-width) solid var(--box-line); }
+  .box { background-image:
+    linear-gradient(var(--box-line),var(--box-line)), linear-gradient(var(--box-line),var(--box-line)),
+    linear-gradient(var(--box-line),var(--box-line)), linear-gradient(var(--box-line),var(--box-line)),
+    linear-gradient(rgba(34,211,238,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,.035) 1px, transparent 1px); }
+  .wall.v { background: linear-gradient(90deg, transparent 3px, var(--gap-line) 3px, var(--gap-line) 5px, transparent 5px); }
+  .wall.h { background: linear-gradient(transparent 3px, var(--gap-line) 3px, var(--gap-line) 5px, transparent 5px); }
+  .wall:hover, .wall.active, .wall:focus-visible { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .tool.page { border: var(--box-line-width) solid var(--box-line); }
