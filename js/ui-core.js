@@ -151,6 +151,7 @@ const HELP = [
   'cls                       clear this log',
   'search [numbers]          NC Search  ·  usb  Erase / Clear USB  ·  plist  PartsList from PDF',
   'copy                      Copy Parts to Drive (NC, PDF… or the DXF when a type is missing)',
+  'dxfnc                     DXF to NC: one .nc per .dxf, saved to a USB drive or a folder',
 ];
 // Parts whose name is q, else starts with / contains q; '*' or 'all' = every part.
 function findParts(q) {
@@ -222,6 +223,7 @@ const COMMANDS = {
   usb: () => openTool('usb'),
   plist: () => openTool('plist'),
   copy: () => openTool('copy'),
+  dxfnc: () => openTool('dxfnc'),
   theme: rest => { document.documentElement.dataset.theme = rest[0] === 'dark' ? 'dark' : rest[0] === 'light' ? 'light' : ''; },
 };
 COMMANDS['?'] = COMMANDS.help;

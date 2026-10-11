@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DXF to NC · NC Drive</title>
+<!-- P12 DXF to NC — one .nc per .dxf; runs on its own; links to index.html when it is open (js/link.js). -->
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="css/ncdrive.css" rel="stylesheet">
+</head>
+<body class="toolPage">
+<main class="tool page" id="dlgDxfnc">
+  <div class="dh"><a class="brandLink" href="index.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgDxfncT">⚙ DXF to NC</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) index.html">Open NC Drive</button></div>
+  <div class="db">
+    <div class="row dxOpts">
+      <div class="drop dxDrop" id="dxDrop" tabindex="0" role="button">Drop .dxf files here, or click to browse</div>
+      <input type="file" id="dxFile" accept=".dxf" multiple hidden>
+      <span class="optGroup" aria-label="DXF clean-up">
+        <label class="chk"><input type="checkbox" id="dxClean" checked> Remove stray geometry</label>
+        <label class="chk"><input type="checkbox" id="dxBend" checked> Remove bend lines</label>
+        <label class="chk"><input type="checkbox" id="dxEtch" checked> Detect etched text</label>
+        <label class="chk"><input type="checkbox" id="dxFeat" checked> Skip countersink / feature outlines</label>
+      </span>
+    </div>
+    <div class="dxView">
+      <section class="dxPane"><div class="dxHead"><b>DXF files</b><span class="muted mono" id="dxCount"></span></div><div class="tblWrap"><table class="tbl" id="dxTable"></table></div></section>
+      <section class="dxPane"><div class="dxHead"><b>NC files</b><span class="muted mono" id="ncCount"></span></div><div class="tblWrap"><table class="tbl" id="ncTable"></table></div></section>
+    </div>
+    <div class="note">Each DXF becomes its own .nc with the same name, zeroed at the part's lower-left corner (G92), metric, incremental, holes before the outer profile, etching as M11/M09. Feed and power are set on the machine. ⬇ on a row downloads that one file.</div>
+  </div>
+  <div class="df dxFoot">
+    <div class="dxOpt"><button id="dxUsb" disabled title="Writes every .nc onto the USB drive">1 · Save NC to USB drive</button><span class="mono dxTarget" id="dxUsbName"></span><button class="ghost mini" id="dxUsbPick" title="Choose the USB drive (or a folder on it)">Change…</button></div>
+    <div class="dxOpt"><button id="dxFolder" disabled title="Copies every .nc into a folder">2 · Copy NC to a folder</button><span class="mono dxTarget" id="dxFolderName"></span><button class="ghost mini" id="dxFolderPick" title="Choose the folder">Change…</button></div>
+    <div class="dxOpt"><button class="ghost" id="dxNew" title="Empties both lists and opens the file picker">3 · Clear and input new DXF</button></div>
+    <span class="grow" id="dxStatus"></span>
+  </div>
+  <div class="usbProg" id="dxProg" hidden><div class="procHead"><span class="procTask" id="dxPTask"></span><span class="procPct mono" id="dxPPct"></span></div><div class="procBar" id="dxBar"><i></i></div></div>
+  <pre class="toolLog" id="toolLog" aria-label="Log"></pre>
+</main>
+<script src="js/common.js"></script>
+<script src="js/config.js"></script>
+<script src="js/link.js"></script>
+<script src="js/folders.js"></script>
+<script src="js/pdf-reader.js"></script>
+<script src="js/p1-geometry.js"></script>
+<script src="js/p2-load.js"></script>
+<script src="js/p3-clean.js"></script>
+<script src="js/p4-pdf.js"></script>
+<script src="js/p6-nc.js"></script>
+<script src="js/p12-dxfnc.js"></script>
+<script src="js/tool-page.js"></script>
+<script src="js/tool-dxfnc.js"></script>
+<script>
+/* folder check: this page needs css/ and js/ next to it. If they did not load (page opened on its own, or straight from inside the zip), say so instead of showing a broken screen. */
+addEventListener('load', function () {
+  var cssOk = !!getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  var jsOk = typeof CONFIG !== 'undefined';
+  if (cssOk && jsOk) return;
+  var miss = [cssOk ? '' : 'css/ncdrive.css', jsOk ? '' : 'js/ files'].filter(Boolean).join(' and ');
+  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Segoe UI,system-ui,sans-serif;overflow:auto';
+  document.body.innerHTML = '<div style="max-width:620px;padding:28px 32px;border:1px solid #22d3ee;box-shadow:0 0 24px rgba(34,211,238,.3);background:#07121d">'
+    + '<h1 style="margin:0 0 10px;font-size:22px;letter-spacing:.12em">NC <span style="color:#ff8a3d">DRIVE</span></h1>'
+    + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'
+    + '<p style="margin:0 0 6px">NC Drive is a folder of files that work together. To open it:</p>'
+    + '<ol style="margin:0 0 10px;padding-left:22px"><li>Right-click <b>nc-drive-project.zip</b> and choose <b>Extract All</b> (opening the page from inside the zip does not work).</li>'
+    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>index.html</b> (Edge or Chrome).</li></ol>'
+    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep index.html, the tool pages and the css and js folders together in that folder.</p></div>';
+});
+</script>
+</body>
+</html>

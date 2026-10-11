@@ -11,6 +11,7 @@ Open `index.html` (online: https://gamueda.github.io/NC-DRIVE/ once GitHub Pages
 | `parts_list.html` | P9 parts list from PDF |
 | `copy_to_drive.html` | P10 copy parts to drive |
 | `erase_usb.html` | P11 erase / write USB |
+| `dxf_to_nc.html` | P12 DXF to NC: one .nc per .dxf, saved to a USB drive or a folder |
 
 Shared code is in `js/` (start with `js/config.js`, which holds every setting and a map of the processes) and the look is in `css/ncdrive.css`.
 

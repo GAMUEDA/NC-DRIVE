@@ -29,11 +29,6 @@ function loadUsbOpts() {
 const saveUsbOpts = () => ls.set('usbOpts', JSON.stringify(usbOpts()));
 
 // ---- drive names: the browser only gives a folder's own name, so a drive letter can be added by hand (✎) ----
-function usbLabels() { try { return JSON.parse(ls.get('usbLabels', '{}')); } catch (e) { return {}; } }
-function driveLabel(h) {
-  if (/^[A-Z]:\\?$/i.test(h.name)) return h.name.toUpperCase().replace(/:$/, ':\\');
-  return usbLabels()[h.name] || '…\\' + h.name;
-}
 function setDriveLabel() {
   if (!usb.handle) return;
   const h = usb.handle, cur = driveLabel(h);

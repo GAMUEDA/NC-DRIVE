@@ -9,7 +9,8 @@
      nc_search.html       P8  tool page   ┐ each runs on its own, and links to index.html when it is open
      parts_list.html      P9  tool page   │ (js/link.js): files, quantities, job name and the nest's .nc files
      copy_to_drive.html   P10 tool page   │ go between the pages; tool logs and progress show on the main page
-     erase_usb.html       P11 tool page   ┘
+     erase_usb.html       P11 tool page   │
+     dxf_to_nc.html       P12 tool page   ┘
      css/ncdrive.css      the look, shared by every page
      js/config.js         this file: every setting
      js/common.js         small helpers ($, esc, matching, openNamed)    js/link.js     main ↔ tool messages
@@ -25,9 +26,10 @@
      js/p9-partslist.js   P9  parts list / work order → lines             readPartsList(), parsePartsRows()
      js/p10-copy.js       P10 copy files, DXF when a type is missing      copyPartsToDrive(), planCopy()
      js/p11-usb.js        P11 list / erase / write files on a stick       scanDrive(), eraseFiles(), writeJobToDrive()
+     js/p12-dxfnc.js      P12 one .dxf → one .nc (no nesting)             dxfToNc()
      js/ui-core.js, ui-job.js, ui-progress.js, ui-status.js, main-tools.js, start.js   main page screen
      (ui-status.js = STATUS box: add to the current nest, zones, parts folder, laser rules, settings lock)
-     js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js   tool page screens
+     js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js / tool-dxfnc.js   tool page screens
 
    P1–P11 never touch the screen: they take values and return results, so each one can be changed or
    tested on its own. Console (F12): NCDrive.process on the main page, NCDriveTool.process on a tool page,
