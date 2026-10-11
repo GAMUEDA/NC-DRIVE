@@ -12,17 +12,23 @@
 <main class="tool page" id="dlgUsb">
   <div class="dh"><a class="brandLink" href="index.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgUsbT">💾 Erase / Clear USB</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) index.html">Open NC Drive</button></div>
   <div class="db">
-    <div class="row"><b>USB drive:</b><span class="mono" id="usbName">not chosen</span><button class="ghost mini" id="usbPick">Choose USB drive…</button><button class="ghost mini" id="usbRefresh" disabled>Refresh</button></div>
+    <div class="row usbBar"><button class="ghost mini" id="usbPick" title="Add a USB stick (or a folder on it) to the list">Add USB drive…</button><button class="ghost mini" id="usbRefresh" disabled title="List the files on the active drive again">Refresh</button><span class="usbActive" id="usbActive"><span class="muted">No USB drive chosen</span></span></div>
+    <div class="usbDrives" id="usbDrives" hidden></div>
     <div class="row">
+      <span class="muted" id="usbCount"></span>
       <label class="chk" style="margin:0;"><input type="checkbox" id="usbOnlyNc" checked> Only .nc files</label>
       <label class="chk" style="margin:0;"><input type="checkbox" id="usbSub"> Include subfolders</label>
     </div>
-    <div class="tblWrap" id="usbWrap" hidden><table class="tbl" id="usbTable"></table></div>
-    <div class="note">Only files are erased, never folders. If the browser won't let you pick the drive itself, make a folder on the stick (e.g. <span class="mono">NC</span>) and pick that.</div>
+    <div class="usbView" id="usbView" hidden>
+      <div class="tblWrap" id="usbWrap"><table class="tbl" id="usbTable"></table></div>
+      <div class="usbPreview"><div class="pvHead" id="pvHead">Preview</div><pre class="pvBody" id="pvBody"></pre></div>
+    </div>
+    <div class="note">Only files are erased, never folders. With more than one stick plugged in, add each one and pick the one to work on. If the browser won't let you pick the drive itself, make a folder on the stick (e.g. <span class="mono">NC</span>) and pick that.</div>
   </div>
   <div class="df"><span class="grow" id="usbStatus"></span>
     <button class="danger" id="usbErase" disabled>Erase</button>
     <button class="ghost" id="usbCopy" disabled title="Writes this job's .nc files onto the USB">Copy this job to USB</button></div>
+  <div class="usbProg" id="usbProg" hidden><div class="procHead"><span class="procTask" id="usbPTask"></span><span class="procPct mono" id="usbPPct"></span></div><div class="procBar" id="usbBar"><i></i></div></div>
   <pre class="toolLog" id="toolLog" aria-label="Log"></pre>
 </main>
 <script src="js/common.js"></script>

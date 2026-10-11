@@ -116,7 +116,7 @@ const CONFIG = {
   copy: { defaultTarget: 'E:', defaultTypes: 'NC, PDF', fallbackType: 'dxf' },
 
   // ---- P11 USB ----
-  usb: { eraseConfirmMs: 4000, maxDepth: 6, skipFolders: /^(System Volume Information|\$RECYCLE\.BIN)$/i },
+  usb: { eraseConfirmMs: 4000, previewBytes: 16384, eraseShowMs: 120, maxDepth: 6, skipFolders: /^(System Volume Information|\$RECYCLE\.BIN)$/i },
 
   // ---- screen ----
   // The screen is drawn for a designW × designH window and scaled to fit the real window each time a page opens

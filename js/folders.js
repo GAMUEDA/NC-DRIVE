@@ -1,6 +1,7 @@
 /* =====================================================================================================
    FOLDERS — folder access in Edge / Chrome (File System Access API), shared by every page
-   Remembered folder handles live in the browser's IndexedDB: 'libs' = linked parts folders, 'usb' = target drive.
+   Remembered folder handles live in the browser's IndexedDB: 'libs' = linked parts folders, 'usb' = target drive,
+   'usbs' = every USB stick picked so far (Erase USB lets you choose between them).
    Pages opened from the same folder share them, so a folder linked in one page is linked in all of them.
    ===================================================================================================== */
 
@@ -52,3 +53,15 @@ async function writeFileTo(dir, name, data) {
 // The target drive / USB stick (one handle, shared by Copy to Drive and Erase USB).
 async function loadTargetDrive() { return idb.get('usb'); }
 async function saveTargetDrive(h) { await idb.set('usb', h); NCLink.notify('drive-changed'); }
+
+// Every USB stick picked so far, so Erase USB can offer a choice when more than one is plugged in.
+async function sameHandleIndex(list, h) {
+  for (let i = 0; i < list.length; i++) { try { if (await list[i].isSameEntry(h)) return i; } catch (e) {} }
+  return -1;
+}
+async function loadUsbDrives() {
+  const list = (await idb.get('usbs')) || [], t = await loadTargetDrive();
+  if (t && (await sameHandleIndex(list, t)) < 0) list.unshift(t);
+  return list;
+}
+async function saveUsbDrives(list) { await idb.set('usbs', list); }

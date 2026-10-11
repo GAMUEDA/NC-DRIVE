@@ -1,7 +1,10 @@
 /* =====================================================================================================
    P11 · USB — list, erase and write .nc files on a USB stick / target drive
    scanDrive(handle, {onlyNc, sub}) → [{dir, name, path, size, mod}]   files on the drive (sorted by path)
-   eraseFiles(files)                → {ok, fail:[paths]}               deletes files only, never folders
+   driveStatus(handle)              → 'ready' | 'locked' | 'missing'    plugged in? ('locked' = needs a click to allow)
+   readPreview(file, maxBytes)      → {text, binary, cut}               the start of a file, for the preview screen
+   eraseFiles(files, onFile)        → {ok, fail:[paths]}               deletes files only, never folders;
+                                                                        onFile(i, file, 'start'|'done'|'fail') per file
    writeJobToDrive(handle, files)   → {written, error}                  files = [{name, text}] from makeJobNcFiles()
    ===================================================================================================== */
 
@@ -19,14 +22,30 @@ async function scanDrive(handle, opts) {
     }
   };
   await walk(handle, '', 0);
-  return out.sort((a, b) => a.path.localeCompare(b.path));
+  return out.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
 }
 
-async function eraseFiles(files) {
+async function driveStatus(handle) {
+  let p = 'granted';
+  try { if (handle.queryPermission) p = await handle.queryPermission({ mode: 'readwrite' }); } catch (e) {}
+  if (p !== 'granted') return 'locked';
+  try { for await (const k of handle.keys()) break; return 'ready'; } catch (e) { return 'missing'; }
+}
+
+async function readPreview(f, maxBytes) {
+  const file = await (await f.dir.getFileHandle(f.name)).getFile();
+  const text = await file.slice(0, maxBytes).text();
+  return { text, binary: /\u0000/.test(text), cut: file.size > maxBytes };
+}
+
+async function eraseFiles(files, onFile) {
   let ok = 0;
   const fail = [];
-  for (const f of files) {
-    try { await f.dir.removeEntry(f.name); ok++; } catch (e) { fail.push(f.path); }
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (onFile) await onFile(i, f, 'start');
+    try { await f.dir.removeEntry(f.name); ok++; if (onFile) await onFile(i, f, 'done'); }
+    catch (e) { fail.push(f.path); if (onFile) await onFile(i, f, 'fail'); }
   }
   return { ok, fail };
 }

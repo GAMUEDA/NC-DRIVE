@@ -363,3 +363,44 @@
   #view:has(> .empty) { display: flex; flex-direction: column; justify-content: flex-end; }
   .empty { padding: 8px 16px; margin: 0 auto 4px; max-width: 760px; background: rgba(3,10,18,.82); border-top: 1px solid rgba(34,211,238,.3); }
   .toolLog:empty { display: none; }
+
+  /* ================= tool pages fill the window down to the bottom ================= */
+  html:has(body.toolPage), body.toolPage { height: 100%; }
+  body.toolPage { overflow: hidden; }
+  .tool.page { width: auto; max-width: none; height: calc(100% - 24px); min-height: 0; margin: 12px; display: flex; flex-direction: column; }
+  .tool.page .db { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .tool.page .tblWrap { flex: 1 1 auto; max-height: none; min-height: 140px; }
+  .tool.page .toolLog { flex: 0 0 auto; }
+  @media (max-width: 760px) { .tool.page { margin: 0; height: 100%; } }
+
+  /* ================= Erase USB: drives, active drive, file list + preview, progress bar ================= */
+  .usbActive { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.06); font-size: 12px; }
+  .usbActive b { color: var(--accent); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; display: inline-block; }
+  .dot.ready { background: var(--ok); box-shadow: 0 0 6px var(--ok); } .dot.missing { background: var(--bad); } .dot.locked { background: var(--warn); }
+  .usbDrives { display: flex; flex-wrap: wrap; gap: 6px; }
+  .drv { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 9px; border: 1px solid var(--line); background: rgba(12,28,44,.7); font-size: 12px; cursor: pointer; }
+  .drv input { margin: 0; accent-color: var(--accent); }
+  .drv small { color: var(--muted); font-size: 10.5px; }
+  .drv.on { border-color: var(--accent); box-shadow: var(--glow); }
+  .drv.missing b { color: var(--muted); }
+  .usbView { flex: 1 1 auto; min-height: 220px; display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 10px; }
+  .usbView[hidden] { display: none; }
+  .usbView .tblWrap { min-height: 0; }
+  #usbTable tr[data-i] { cursor: pointer; }
+  #usbTable tr.sel td { background: rgba(34,211,238,.1); }
+  #usbTable tr.del td { background: rgba(255,77,94,.16); color: var(--bad); }
+  #usbTable tr.gone td { color: var(--muted); text-decoration: line-through; }
+  #usbTable tr.gone td.st { text-decoration: none; color: var(--ok); }
+  #usbTable tr.failed td.st { color: var(--bad); font-weight: 600; }
+  #usbTable td.st { white-space: nowrap; font-size: 11px; }
+  .usbPreview { display: flex; flex-direction: column; min-height: 0; border: 1px solid rgba(34,211,238,.35); background: rgba(3,10,18,.85); }
+  .pvHead { padding: 6px 10px; border-bottom: 1px solid rgba(34,211,238,.25); font-size: 11px; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pvHead b { color: var(--accent); }
+  .pvBody { flex: 1; margin: 0; padding: 8px 10px; overflow: auto; font: 12px/1.45 "Share Tech Mono", monospace; color: #8fd8ea; white-space: pre; }
+  .usbView.erasing .usbPreview { border-color: var(--bad); box-shadow: 0 0 14px rgba(255,77,94,.25); }
+  .usbView.erasing .pvHead b { color: var(--bad); }
+  .usbProg { padding: 8px 16px 10px; border-top: 1px solid rgba(34,211,238,.3); display: flex; flex-direction: column; gap: 5px; }
+  .usbProg[hidden] { display: none; }
+  .usbProg .procBar { height: 12px; }
+  @media (max-width: 760px) { .usbView { grid-template-columns: 1fr; grid-template-rows: minmax(160px,1fr) minmax(140px,1fr); } }
