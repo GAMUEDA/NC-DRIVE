@@ -73,6 +73,9 @@ const CONFIG = {
     tieTol: 2, // cells: two spots this close count as level
     turnMarginFrac: 0.75, // a quarter-turn is only used when it lands this share of the part height lower
     skeletonOffset: 12.7, // skeleton cut sits 0.5" above the nest
+    sectionMM: 1219.2, // section cuts every 4' (the "Section cuts" box); the lines are drawn on the sheet, never cut
+    defaultSheet: { w: 1219.2, h: 3048 }, // on this sheet, a gauge whose parts don't fit ...
+    longSheet: { w: 1219.2, h: 4267.2 }, // ... is redone on this one (4' × 14'). null = never
     progressMs: 60, // how often the screen is updated while nesting
   },
 
@@ -129,9 +132,9 @@ const CONFIG = {
     railMaterial: '14ga Satincoat', // ON-… header / cornice / sill rails (…_HR, …_CR, …_SR)
     dxfOnly: ['18610'], // always cut from the DXF, never from an .NC (Pull parts)
   },
-  // Spacing and DXF clean-up are locked until the admin key is typed (click 🔒 at the bottom of the STATUS box).
-  // The unlock is remembered by this browser. lockedByDefault: false = never lock.
-  admin: { key: 'nest-admin-3369', lockedByDefault: true, lockIds: ['gapIn', 'marginIn', 'skelChk', 'cleanChk', 'bendChk', 'etchChk', 'featChk'] },
+  // lockedByDefault: true = Spacing and DXF clean-up are locked until the admin key is typed (click 🔒 at the bottom of the
+  // STATUS box; the unlock is remembered by this browser). false = never locked (nest_admin 5 is an admin build).
+  admin: { key: 'nest-admin-3369', lockedByDefault: false, lockIds: ['gapIn', 'marginIn', 'skelChk', 'sectChk', 'cleanChk', 'bendChk', 'etchChk', 'featChk'] },
 
   // ---- screen ----
   // The screen is drawn for a designW × designH window and scaled to fit the real window each time a page opens

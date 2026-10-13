@@ -104,8 +104,11 @@
         <h2>Spacing</h2>
         <div class="field"><label for="gapIn">Part gap</label><span><input class="num" id="gapIn" type="number" value="6.35" step="0.1"> mm</span></div>
         <div class="field"><label for="marginIn">Sheet margin</label><span><input class="num" id="marginIn" type="number" value="10" step="0.5"> mm</span></div>
-        <label class="chk"><input type="checkbox" id="skelChk"> Skeleton cut 0.5" above the nest</label>
-        <div class="hint">One straight cut across the usable width above the tallest part on each sheet frees the unused strip in one piece. Parts are never mirrored, so etching stays on the right side.</div>
+        <div class="hint">Parts only sit at 0° or 180° (or the whole nest at 90°/270°) to respect grain direction, never mixed. Parts are never mirrored, so etching stays on the right side.</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="sectChk" checked> Section cuts every 4' on long sheets</label>
+        <div class="hint">Full-length nests keep a clear lane at each 4' mark (a 10' sheet = 3 sections, a 14' sheet = 4) with a line drawn there, so the sheet can be cut into handleable pieces. If a part is longer than 4', that job isn't sectioned. The lines are not in the .nc.</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="skelChk"> Skeleton cut 0.5" above the nest</label>
+        <div class="hint">One straight cut across the usable width above the tallest part frees the unused strip in one piece. On the 4' × 10', a gauge with a part longer than 10' moves to a 4' × 14' sheet by itself.</div>
       </div>
       <div class="sec">
         <h2>DXF clean-up</h2>

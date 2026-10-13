@@ -170,8 +170,8 @@ function makeSheetNc(sheet) {
     for (const loop of buildEtchLoops(p)) emitLoop(loopPts(loop, T), false, true, C.markOn, C.markOff);
     for (const loop of buildLoops(p)) emitLoop(loopPts(loop, T), true, loop.closed, C.cutOn, C.cutOff);
   }
-  // skeleton: a straight strip cut, open by design (not a fault)
-  for (const cut of sheet.skeleton || []) emitLoop([{ x: cut.x0, y: cut.y, arc: null }, { x: cut.x1, y: cut.y, arc: null }], false, true, C.cutOn, C.cutOff);
+  // skeleton: a straight strip cut, open by design (not a fault). Section lines are only drawn, never cut.
+  for (const cut of (sheet.skeleton || []).filter(c => !c.section)) emitLoop([{ x: cut.x0, y: cut.y, arc: null }, { x: cut.x1, y: cut.y, arc: null }], false, true, C.cutOn, C.cutOff);
   C.footer.forEach(l => L.push(l));
   return { text: L.join(C.lineEnd) + C.lineEnd, openCount, pierces, cutLen };
 }

@@ -80,8 +80,8 @@ const isAdmin = () => !CONFIG.admin.lockedByDefault || ls.get('admin', '') === '
 function applyLockState() {
   const admin = isAdmin();
   CONFIG.admin.lockIds.forEach(id => { const el = $('#' + id); if (el) el.disabled = !admin; });
-  $('#lockStatus').textContent = admin ? '🔓 Admin mode' : '🔒 Settings locked';
-  $('#lockStatus').title = admin ? 'Click to lock the Spacing and DXF clean-up settings again' : 'Spacing and DXF clean-up are locked. Click to type the admin key.';
+  $('#lockStatus').textContent = !CONFIG.admin.lockedByDefault ? '🔓 Admin build' : admin ? '🔓 Admin mode' : '🔒 Settings locked';
+  $('#lockStatus').title = !CONFIG.admin.lockedByDefault ? 'Settings are never locked in this build (CONFIG.admin.lockedByDefault in js/config.js)' : admin ? 'Click to lock the Spacing and DXF clean-up settings again' : 'Spacing and DXF clean-up are locked. Click to type the admin key.';
   $('#unlockRow').hidden = true;
   $('#side').classList.toggle('locked', !admin);
   renderRules();
@@ -131,10 +131,11 @@ function nestDeltas() {
   S.groups.forEach((g, gi) => g.req.forEach(q => { if (!live.has(gi + '|' + q.part.id) && q.qty > 0) out.cut.push(`${q.part.name} (removed)`); }));
   return out;
 }
-// The placements stay valid only for the same gap, margin and sheet size.
+// The placements stay valid only for the same gap, margin and sheet (a nest moved to 4' × 14' by itself still counts).
 function nestStillFits() {
   const set = nestSettingsFromPanel(), o = S.nestSettings;
-  return !!o && o.gap === set.gap && o.margin === set.margin && o.mat.w === set.mat.w && o.mat.h === set.mat.h;
+  if (!o || o.gap !== set.gap || o.margin !== set.margin) return false;
+  return S.groups.every(g => g.r.bed.w === set.mat.w && (g.r.bed.h === set.mat.h || g.r.auto));
 }
 function updateAddNestBtn() {
   const b = $('#addNestBtn');
@@ -172,7 +173,7 @@ async function addToCurrentNest() {
     }
     // parts in a gauge that has no nest yet get their own nest
     for (const { gauge, list } of groupByGauge(D.newGauge)) {
-      const r = await nestGroup(list, set.mat, set.gap, set.margin, { skeleton: set.skeleton, onProgress: (n, t) => { btn.textContent = `Nesting ${gauge || '(no gauge)'} ${n}/${t}…`; } });
+      const r = await nestGauge(list, set, (n, t) => { btn.textContent = `Nesting ${gauge || '(no gauge)'} ${n}/${t}…`; });
       S.groups.push({ gauge, r, req: list.map(p => ({ part: p, qty: p.qty })) });
       notes.push(`${gauge || '(no gauge)'}: a new gauge, ${list.reduce((a, p) => a + p.qty, 0)} pieces on ${r.sheets.length} new sheet${r.sheets.length === 1 ? '' : 's'}`);
       if (!first) first = { gi: S.groups.length - 1, si: 0 };

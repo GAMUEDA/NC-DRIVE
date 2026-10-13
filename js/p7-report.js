@@ -55,7 +55,7 @@ function reportHtml(job) {
         <div class="kv"><span>Machine</span><span>${esc(st.bed || '')}</span><span>Sheet</span><span class="mono">${Math.round(st.mat ? st.mat.w : 0)} × ${Math.round(st.mat ? st.mat.h : 0)} mm</span><span>Gap / margin</span><span class="mono">${st.gap} / ${st.margin} mm</span><span>Sheets</span><b>${d.sheets}</b><span>Parts nested</span><b class="${d.nested < d.req ? 'short' : ''}">${d.nested} of ${d.req}${d.nested < d.req ? ` — ${d.req - d.nested} NOT NESTED` : ''}</b><span>Average use</span><span class="mono">${(allUtil * 100).toFixed(1)}%</span><span>Nest time</span><span class="mono">${(job.nestMs / 1000).toFixed(2)} s</span></div></div>`;
   groups.forEach((g, gi) => {
     // sheets table
-    html += `<h4><span class="dot" style="background:${gaugeColor(g.gauge)}"></span>${esc(g.gauge || '(no gauge set)')} — ${g.r.sheets.length} sheet${g.r.sheets.length > 1 ? 's' : ''}</h4>
+    html += `<h4><span class="dot" style="background:${gaugeColor(g.gauge)}"></span>${esc(g.gauge || '(no gauge set)')} — ${g.r.sheets.length} sheet${g.r.sheets.length > 1 ? 's' : ''}${g.r.auto ? ` <span class="muted">· ${Math.round(g.r.bed.w)} × ${Math.round(g.r.bed.h)} mm (4' × 14')</span>` : ''}${g.r.strategy ? ` <span class="muted" style="font-weight:400">· ${esc(g.r.strategy)}</span>` : ''}</h4>
         <table><thead><tr><th>Sheet</th><th class="thumb">Layout</th><th>NC file</th><th>Parts</th><th>Use</th><th>Length used</th><th>Pierces</th><th>Cut length</th></tr></thead><tbody>`;
     g.r.sheets.forEach((sh, si) => {
       const gc = makeSheetNc(sh);

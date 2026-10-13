@@ -89,7 +89,7 @@ function sheetSvg(sh, bed, margin, small) {
     g += `<path d="${d}" stroke="${partColor(it.p.name)}"${it.added ? ' class="added"' : ''}><title>${esc(it.p.name)} · ${it.rot}°${it.added ? ' · added to the nest' : ''}</title></path>`;
   }
   let sk = '';
-  for (const c of sh.skeleton || []) sk += `<line x1="${c.x0}" y1="${c.y}" x2="${c.x1}" y2="${c.y}" stroke="var(--bad)" stroke-dasharray="20 12"/>`;
+  for (const c of sh.skeleton || []) sk += `<line x1="${c.x0}" y1="${c.y}" x2="${c.x1}" y2="${c.y}" stroke="${c.section ? 'var(--warn)' : 'var(--bad)'}" stroke-width="${c.section ? 2.5 : 1.5}" stroke-dasharray="${c.section ? '14 8' : '20 12'}"><title>${c.section ? "section cut line (4') — drawn only, not in the .nc" : 'skeleton cut'}</title></line>`;
   return `<svg class="${small ? '' : 'sheetSvg'}" viewBox="-20 -20 ${H + 40} ${W + 40}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sheet layout">
       <g transform="matrix(0,-1,1,0,0,${W})" fill="none" stroke-width="${small ? 1.6 : 1}" vector-effect="non-scaling-stroke" style="vector-effect:non-scaling-stroke">
         <rect x="0" y="0" width="${W}" height="${H}" fill="var(--sheet)" stroke="var(--sheet-line)" stroke-width="2"/>
@@ -173,7 +173,7 @@ async function nestAll() {
     };
     const onGroupDone = g => {
       const sk = [...g.r.skipped].map(([p, n]) => `${p.name} ×${n}`);
-      log(`${g.gauge || '(no gauge)'}: ${g.r.sheets.length} sheet${g.r.sheets.length === 1 ? '' : 's'}, ${(avg(g.r.sheets.map(s => s.util)) * 100).toFixed(1)}% average use${sk.length ? ' · did not fit: ' + sk.join(', ') : ''}`, sk.length ? 'warn' : 'ok');
+      log(`${g.gauge || '(no gauge)'}: ${g.r.sheets.length} sheet${g.r.sheets.length === 1 ? '' : 's'}${g.r.auto ? " on 4' × 14'" : ''}, ${(avg(g.r.sheets.map(s => s.util)) * 100).toFixed(1)}% average use · ${g.r.strategy}${sk.length ? ' · did not fit (parts stay square-on for grain): ' + sk.join(', ') : ''}`, sk.length ? 'warn' : 'ok');
     };
     const res = await nestJob(S.parts, set, onProgress, onGroupDone);
     S.groups = res.groups; S.gi = 0; S.si = 0; S.stale = false;
@@ -241,8 +241,8 @@ function renderView() {
     return;
   }
   const g = S.groups[S.gi], sh = g.r.sheets[S.si], n = sheetNo(S.gi, S.si), gc = makeSheetNc(sh);
-  $('#mainTitle').textContent = `Sheet ${n} of ${flatSheets().length} · ${g.gauge || '(no gauge)'}`;
-  v.innerHTML = `<div class="stats"><span><b>${sh.items.length}</b> parts</span><span><b>${(sh.util * 100).toFixed(1)}%</b> material used</span><span><b>${Math.round(sh.used)}</b> of ${Math.round(g.r.bed.h)} mm length</span><span><b>${gc.pierces}</b> pierces</span><span><b>${(gc.cutLen / 1000).toFixed(1)}</b> m cut</span>${gc.openCount ? `<span style="color:var(--warn)"><b>${gc.openCount}</b> open contour${gc.openCount > 1 ? 's' : ''}</span>` : ''}
+  $('#mainTitle').textContent = `Sheet ${n} of ${flatSheets().length} · ${g.gauge || '(no gauge)'}${g.r.auto ? " · 4' × 14'" : ''}`;
+  v.innerHTML = `<div class="stats"><span><b>${sh.items.length}</b> parts</span><span><b>${(sh.util * 100).toFixed(1)}%</b> material used</span><span><b>${Math.round(sh.used)}</b> of ${Math.round(g.r.bed.h)} mm length</span><span><b>${gc.pierces}</b> pierces</span>${(() => { const k = sh.skeleton || [], nS = k.filter(x => x.section).length, nK = k.length - nS; return (nS ? `<span><b>${nS}</b> section line${nS > 1 ? 's' : ''} (4')</span>` : '') + (nK ? `<span><b>${nK}</b> skeleton cut</span>` : ''); })()}${sh.added ? `<span style="color:var(--ok)">+${sh.added} added</span>` : ''}<span><b>${(gc.cutLen / 1000).toFixed(1)}</b> m cut</span>${gc.openCount ? `<span style="color:var(--warn)"><b>${gc.openCount}</b> open contour${gc.openCount > 1 ? 's' : ''}</span>` : ''}
       <span style="margin-left:auto"><button class="ghost mini" id="dlThis">Download ${esc(ncName(S.gi, S.si))}</button></span></div>
       ${sheetSvg(sh, g.r.bed, g.r.grid.margin, false)}<div class="legend">${sheetLegend(sh)}</div>`;
   $('#dlThis').onclick = () => downloadSheetNC(S.gi, S.si);

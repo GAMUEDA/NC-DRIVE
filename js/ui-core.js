@@ -33,6 +33,7 @@ function nestSettingsFromPanel() {
     gap: Math.max(0, parseFloat($('#gapIn').value) || 0),
     margin: Math.max(0, parseFloat($('#marginIn').value) || 0),
     skeleton: $('#skelChk').checked,
+    sections: $('#sectChk').checked,
   };
 }
 // The job as the report (P7) sees it.
@@ -267,7 +268,7 @@ function markStale() { if (S.groups.length) { S.stale = true; renderSheets(); } 
 function wireSettings() {
   document.querySelectorAll('#bedSeg button').forEach(b => (b.onclick = () => setBed(+b.dataset.b)));
   ['sheetW', 'sheetH'].forEach(id => $('#' + id).addEventListener('input', () => { S.sheetCustom = true; updateBedNote(); markStale(); }));
-  ['gapIn', 'marginIn', 'skelChk'].forEach(id => $('#' + id).addEventListener('change', markStale));
+  ['gapIn', 'marginIn', 'skelChk', 'sectChk'].forEach(id => $('#' + id).addEventListener('change', markStale));
   // a clean-up option changed: re-clean every part (P3)
   ['cleanChk', 'bendChk', 'etchChk', 'featChk'].forEach(id => $('#' + id).addEventListener('change', () => { S.parts.forEach(p => cleanPart(p, cleanOpts())); markStale(); renderParts(); }));
   $('#jobIn').addEventListener('input', () => { if (S.view === 'report') renderView(); announceChange(); });

@@ -1,13 +1,17 @@
 /* =====================================================================================================
-   P5 · NESTING — true-shape, raster, bottom-left fill
+   P5 · NESTING — true-shape, raster, bottom-left fill (nest_admin 5 rules)
    nestJob(parts, settings, onProgress) → {groups:[{gauge, r, req}], ms}   one nest per gauge (the Nest button)
+   nestGauge(list, settings, onProgress) → r                              one gauge, with the 4' × 14' retry
    groupByGauge(parts)                  → [{gauge, list}]                   parts with qty > 0, by gauge
-   nestGroup(list, mat, gap, margin, opts) → {sheets, skipped:Map(part→count), bed, grid}
+   nestGroup(list, mat, gap, margin, opts) → {sheets, skipped:Map(part→count), bed, grid, grain, sectMM, strategy}
    addToGroup(r, adds, opts)            → pieces gained per sheet: new copies fitted around a nest without moving anything
    Each part is rasterised at cell size c (gap/3, 1.5–6 mm); holes stay open so small parts can sit inside them,
    and the outline is grown by the gap. Placement and overlap tests are bit operations on packed rows.
-   Largest parts go first; each goes to the lowest-then-leftmost spot on the first sheet it fits, trying 0°/180° first
-   and a quarter-turn only when it lands clearly lower. Parts are never mirrored.
+   GRAIN: parts only sit at 0°/180°, or (the whole nest turned a quarter) at 90°/270° — never a mix. Both are tried
+   and the shorter layout wins. Parts are never mirrored.
+   SECTION CUTS (settings.sections): long sheets are nested as 4' slots, one slot's layout repeated while parts remain,
+   so the sheet can be cut into handleable pieces; used whenever every part fits a slot. The lines are drawn, not cut.
+   LONG SHEET: on the default 4' × 10', a gauge with parts that don't fit is redone on a 4' × 14' sheet.
    ===================================================================================================== */
 
 // One part at one angle → bitmap (solid = part incl. hole-free areas, dil = part grown by the gap) + outline for drawing.
@@ -92,10 +96,16 @@ function rasterizePart(p, ang, c, k) {
 }
 
 // Empty sheet bitmap Wc × Hc cells with the margin (mc cells) already filled.
-function newSheet(Wc, Hc, P, mc) {
+// lanes = {mm, c, k}: a clear strip across the sheet at every section line, so no part straddles it.
+function newSheet(Wc, Hc, P, mc, lanes) {
   const Ha = Hc + 2 * P, sw = Math.ceil((Wc + 2 * P) / 32) + 2, bits = new Uint32Array(Ha * sw);
   const set = (x, y) => { bits[(y + P) * sw + ((x + P) >> 5)] |= 1 << ((x + P) & 31); };
   for (let y = 0; y < Hc; y++) for (let x = 0; x < Wc; x++) if (x < mc || x >= Wc - mc || y < mc || y >= Hc - mc) set(x, y);
+  if (lanes && lanes.mm)
+    for (let b = lanes.mm; b < (Hc - mc) * lanes.c; b += lanes.mm) {
+      const yc = Math.round(b / lanes.c), half = Math.max(1, Math.ceil(lanes.k / 2));
+      for (let y = Math.max(0, yc - half); y < Math.min(Hc, yc + half); y++) for (let x = 0; x < Wc; x++) set(x, y);
+    }
   return { Wc, Hc, P, sw, bits, items: [] };
 }
 
@@ -169,47 +179,39 @@ function findPos(S, R, step, band) {
 const tick = () => new Promise(r => setTimeout(r, 0));
 
 // The raster grid for one material, gap and margin: cell size, gap in cells, sheet size in cells, and a raster cache.
-function nestGrid(mat, gap, margin) {
+// off = grain direction (0 → parts at 0°/180°, 90 → 90°/270°); sect = section-line spacing in mm (0 = none).
+function nestGrid(mat, gap, margin, off, sect) {
   const N = CONFIG.nest;
   const c = Math.min(N.cellMax, Math.max(N.cellMin, gap / N.cellPerGap)), k = Math.max(1, Math.ceil(gap / c)), P = k + 1;
   const cache = new Map();
   const getR = (p, a) => { let m = cache.get(p); if (!m) { m = {}; cache.set(p, m); } return m[a] || (m[a] = rasterizePart(p, a, c, k)); };
-  return { c, k, P, margin, gap, Wc: Math.floor(mat.w / c), Hc: Math.floor(mat.h / c), mc: Math.ceil(margin / c), getR };
+  return { c, k, P, margin, gap, off: off || 0, sect: sect || 0, Wc: Math.floor(mat.w / c), Hc: Math.floor(mat.h / c), mc: Math.ceil(margin / c), getR };
 }
+const gridSheet = G => newSheet(G.Wc, G.Hc, G.P, G.mc, { mm: G.sect, c: G.c, k: G.k });
 
-// One entry per piece, biggest first; each part's base angle is the one that lies flattest. adds: [{p, n}]
-function pieceList(adds, getR) {
+// One entry per piece, biggest first; every piece starts at the grain angle. adds: [{p, n}]
+function pieceList(adds, G) {
   const inst = [];
   for (const { p, n } of adds) {
     if (!(n > 0)) continue;
-    const R0 = getR(p, 0), R90 = getR(p, 90);
-    p._ar = R0.area;
-    p._base = R0.bh <= R90.bh ? 0 : 90;
+    p._ar = G.getR(p, G.off).area;
     for (let i = 0; i < n; i++) inst.push(p);
   }
   return inst.sort((a, b) => b._ar - a._ar);
 }
 
-// Place the pieces on the sheets: each goes to the lowest-then-leftmost spot on the first sheet it fits, new sheets as needed.
-// Returns the sheets, plus the pieces that fit nowhere (skipped: Map part → count). added = flag the new items (Add to nest).
+// Place the pieces on the sheets: each goes to the lowest-then-leftmost spot on the first sheet it fits (0°/180° in the
+// grain direction only), new sheets as needed. Pieces that fit nowhere go in skipped (Map part → count).
+// added = flag the new items (Add to nest).
 async function placePieces(G, inst, sheets, skipped, opts, added) {
-  const N = CONFIG.nest, getR = G.getR, tol = N.tieTol;
-  const pick = (S, p, angs) => {
+  const N = CONFIG.nest, getR = G.getR, tol = N.tieTol, angs = [G.off, (G.off + 180) % 360];
+  const pick = S => {
     let best = null;
     for (const a of angs) {
-      const R = getR(p, a), pos = findPos(S, R, 1, Math.round(N.bandFrac * R.bh));
+      const R = getR(S._p, a), pos = findPos(S, R, 1, Math.round(N.bandFrac * R.bh));
       if (!pos) continue;
       if (!best || pos.y < best.y - tol || (Math.abs(pos.y - best.y) <= tol && pos.x < best.x - tol)) best = { x: pos.x, y: pos.y, R };
     }
-    return best;
-  };
-  const tryAngles = (S, p) => {
-    const b = p._base, flat = [b, (b + 180) % 360], turn = [(b + 90) % 360, (b + 270) % 360];
-    let best = pick(S, p, flat);
-    const mg = Math.round(N.turnMarginFrac * Math.min(getR(p, b).bh, getR(p, turn[0]).bh));
-    if (best && S._lb && turn.every(a => (S._lb.get(getR(p, a)) || 0) >= best.y - mg)) return best;
-    const spun = pick(S, p, turn);
-    if (spun && (!best || spun.y < best.y - mg)) best = spun;
     return best;
   };
   let lastTick = Date.now();
@@ -217,9 +219,10 @@ async function placePieces(G, inst, sheets, skipped, opts, added) {
     const p = inst[n];
     if (opts.onProgress && Date.now() - lastTick > N.progressMs) { opts.onProgress(n, inst.length); await tick(); lastTick = Date.now(); }
     for (let at = 0; at <= sheets.length; at++) {
-      const fresh = at === sheets.length, S = fresh ? newSheet(G.Wc, G.Hc, G.P, G.mc) : sheets[at];
+      const fresh = at === sheets.length, S = fresh ? gridSheet(G) : sheets[at];
       if (!fresh && S._full && S._full.has(p)) continue; // an identical copy already failed here: skip straight on
-      const best = tryAngles(S, p);
+      S._p = p;
+      const best = pick(S);
       if (best) {
         stampPart(S, best.R, best.x, best.y);
         const it = { p, R: best.R, rot: best.R.ang, x: best.x * G.c, y: best.y * G.c };
@@ -235,42 +238,106 @@ async function placePieces(G, inst, sheets, skipped, opts, added) {
   if (opts.onProgress) opts.onProgress(inst.length, inst.length);
 }
 
-// Finish each sheet: use, length used, optional skeleton cut; then free the raster once the layout is final.
+// Finish each sheet: use, length used, section lines (drawn, not cut), optional skeleton cut; then free the raster.
 function finishSheets(sheets, G, mat, skeleton) {
-  const N = CONFIG.nest, c = G.c, usableTop = (G.Hc - G.mc) * c;
+  const N = CONFIG.nest, c = G.c, usableTop = (G.Hc - G.mc) * c, x0 = G.mc * c, x1 = (G.Wc - G.mc) * c;
   for (const S of sheets) {
     let a = 0, top = 0;
     for (const it of S.items) { a += it.R.area; top = Math.max(top, it.y + it.R.bh * c); }
     S.util = (a * c * c) / (mat.w * mat.h);
     S.used = top + G.margin;
     S.skeleton = [];
-    if (skeleton && S.items.length) { const y = top + N.skeletonOffset; if (y < usableTop) S.skeleton.push({ y, x0: G.mc * c, x1: (G.Wc - G.mc) * c }); }
-    delete S.bits; delete S._lb; delete S._col; delete S._full;
+    if (G.sect && S.items.length) for (let b = G.sect; b < usableTop; b += G.sect) if (b < top) S.skeleton.push({ y: b, x0, x1, section: true });
+    if (skeleton && S.items.length) { const y = top + N.skeletonOffset; if (y < usableTop) S.skeleton.push({ y, x0, x1 }); }
+    delete S.bits; delete S._lb; delete S._col; delete S._full; delete S._p;
   }
 }
+const skippedCount = r => [...r.skipped.values()].reduce((a, b) => a + b, 0);
+// Sheet length actually used: every sheet but the last in full, the last as far as it was used (anything left out counts hugely).
+const consumedLen = (r, mat) => skippedCount(r) * 1e9 + Math.max(0, r.sheets.length - 1) * mat.h + (r.sheets.length ? r.sheets[r.sheets.length - 1].used : 0);
 
-// Nest one gauge group. list: parts with .qty. mat: {w,h} mm. opts: {skeleton, onProgress(n, total)}.
+// One plain nest in one grain direction. adds: [{p, n}]
+async function nestPlain(adds, mat, gap, margin, off, opts) {
+  const G = nestGrid(mat, gap, margin, off, 0), sheets = [], skipped = new Map();
+  await placePieces(G, pieceList(adds, G), sheets, skipped, opts, false);
+  finishSheets(sheets, G, mat, opts.skeleton);
+  return { sheets, skipped, bed: mat, grid: { c: G.c, k: G.k, margin, gap }, _G: G, skeleton: !!opts.skeleton, grain: off, sectMM: 0 };
+}
+
+// SECTIONED NESTING: the sheet is a stack of slots (4' + 4' + the remainder). One slot is nested as its own small sheet and
+// that layout is repeated into the next slot while enough parts remain, so every full section is identical; a shorter
+// slot gets whatever fits it. Parts never cross a section line.
+async function nestSections(adds, mat, gap, margin, off, secMM, opts) {
+  const G = nestGrid(mat, gap, margin, off, secMM), rem = new Map(adds.map(a => [a.p, a.n])), left = () => [...rem.values()].reduce((a, b) => a + b, 0);
+  const slots = [];
+  for (let st = 0; st < mat.h - 1; st += secMM) { const h = Math.min(secMM, mat.h - st); if (h >= 2 * margin + 40) slots.push({ start: st, h }); }
+  const cache = new Map(), sheets = [];
+  let guard = 0;
+  while (left() > 0 && guard++ < 400) {
+    const S = { items: [] };
+    let any = false;
+    for (const sl of slots) {
+      if (!left()) break;
+      let L = cache.get(sl.h);
+      if (L) for (const [p, q] of L.counts) if ((rem.get(p) || 0) < q) { L = null; break; }
+      if (!L) {
+        const sub = [...rem].filter(([, n]) => n > 0).map(([p, n]) => ({ p, n }));
+        const r = await nestPlain(sub, { w: mat.w, h: sl.h }, gap, margin, off, { onProgress: opts.onProgress });
+        const first = r.sheets[0], counts = new Map();
+        if (first) for (const it of first.items) counts.set(it.p, (counts.get(it.p) || 0) + 1);
+        L = { items: first ? first.items : [], counts };
+        cache.set(sl.h, L);
+      }
+      if (!L.items.length) continue;
+      for (const it of L.items) S.items.push({ p: it.p, R: it.R, rot: it.rot, x: it.x, y: Math.round((it.y + sl.start) / G.c) * G.c });
+      for (const [p, q] of L.counts) rem.set(p, rem.get(p) - q);
+      any = true;
+    }
+    if (!any) break;
+    sheets.push(S);
+  }
+  const skipped = new Map([...rem].filter(([, n]) => n > 0));
+  finishSheets(sheets, G, mat, opts.skeleton);
+  return { sheets, skipped, bed: mat, grid: { c: G.c, k: G.k, margin, gap }, _G: G, skeleton: !!opts.skeleton, grain: off, sectMM: secMM };
+}
+
+// Nest one gauge group: both grain directions, sectioned and plain; a sectioned layout that fits everything always wins,
+// otherwise the shortest. list: parts with .qty. mat: {w,h} mm. opts: {skeleton, sections (mm, 0 = off), onProgress(n, total)}.
 async function nestGroup(list, mat, gap, margin, opts) {
   opts = opts || {};
-  const G = nestGrid(mat, gap, margin), sheets = [], skipped = new Map();
-  await placePieces(G, pieceList(list.map(p => ({ p, n: p.qty })), G.getR), sheets, skipped, opts, false);
-  finishSheets(sheets, G, mat, opts.skeleton);
-  return { sheets, skipped, bed: mat, grid: { c: G.c, k: G.k, margin, gap }, _G: G, skeleton: !!opts.skeleton };
+  const adds = list.filter(p => p.qty > 0).map(p => ({ p, n: p.qty })), secMM = opts.sections && mat.h > opts.sections + margin + 5 ? opts.sections : 0;
+  const ext = (p, off) => (off ? p.w : p.h); // the part's length along the sheet in this grain direction
+  const tries = [];
+  for (const off of [0, 90]) for (const sec of secMM ? [secMM, 0] : [0]) tries.push({ off, sec });
+  const secOK = {};
+  let best = null;
+  for (const t of tries) {
+    if (!t.sec && secOK[t.off]) continue; // a sectioned layout worked in this direction — it is always the one used
+    if (t.sec && adds.some(a => ext(a.p, t.off) > t.sec - gap - 2 * margin)) continue; // a part is longer than a section
+    const r = t.sec ? await nestSections(adds, mat, gap, margin, t.off, t.sec, opts) : await nestPlain(adds, mat, gap, margin, t.off, opts);
+    r.len_ = consumedLen(r, mat);
+    if (t.sec && !r.skipped.size) secOK[t.off] = true;
+    if (t.sec && r.skipped.size) continue; // sections didn't work out for this job — the plain run covers it
+    if (!best || (!!r.sectMM > !!best.sectMM) || (!!r.sectMM === !!best.sectMM && r.len_ < best.len_ - 0.5)) best = r;
+  }
+  best.strategy = [best.sectMM ? "section cuts every 4'" : '', best.grain ? 'grain across the sheet (90°/270°)' : 'grain along the sheet (0°/180°)'].filter(Boolean).join(' · ');
+  return best;
 }
 
 // ADD TO THE CURRENT NEST — parts already placed are never moved. Each sheet's occupancy is rebuilt from where its parts
-// really are, then the new copies go into free space on the existing sheets first, then onto new sheets.
-// r: a nestGroup result. adds: [{p, n}]. → pieces gained per sheet (new sheets count from 0)
+// really are (section lanes kept clear), then the new copies go into free space on the existing sheets first, then onto
+// new sheets — in the nest's own grain direction. r: a nestGroup result. adds: [{p, n}]. → pieces gained per sheet
 async function addToGroup(r, adds, opts) {
   opts = opts || {};
-  const G = r._G || (r._G = nestGrid(r.bed, r.grid.gap, r.grid.margin)), before = r.sheets.map(S => S.items.length);
+  const G = nestGrid(r.bed, r.grid.gap, r.grid.margin, r.grain || 0, r.sectMM || 0), before = r.sheets.map(S => S.items.length);
   for (const S of r.sheets) {
-    const T = newSheet(G.Wc, G.Hc, G.P, G.mc);
+    const T = gridSheet(G);
     for (const it of S.items) stampPart(T, it.R, Math.round(it.x / G.c), Math.round(it.y / G.c));
-    S.bits = T.bits; S.sw = T.sw; S.Wc = T.Wc; S.Hc = T.Hc; S.P = T.P;
+    Object.assign(S, { bits: T.bits, sw: T.sw, Wc: T.Wc, Hc: T.Hc, P: T.P });
   }
-  await placePieces(G, pieceList(adds, G.getR), r.sheets, r.skipped, opts, true);
+  await placePieces(G, pieceList(adds, G), r.sheets, r.skipped, opts, true);
   finishSheets(r.sheets, G, r.bed, r.skeleton);
+  r._G = G;
   return r.sheets.map((S, i) => S.items.length - (before[i] || 0));
 }
 
@@ -286,15 +353,25 @@ function groupByGauge(parts) {
   return [...byGauge.values()];
 }
 
-// The whole nesting step. settings: {mat:{w,h}, gap, margin, skeleton}. onGroupDone(group, index, count) is optional.
+// One gauge with the settings: nestGroup, and — on the default 4' × 10' — a retry on a 4' × 14' sheet when parts don't fit.
+// settings: {mat:{w,h}, gap, margin, skeleton, sections}
+async function nestGauge(list, settings, onProgress) {
+  const N = CONFIG.nest, o = { skeleton: settings.skeleton, sections: settings.sections ? N.sectionMM : 0, onProgress };
+  let r = await nestGroup(list, settings.mat, settings.gap, settings.margin, o);
+  const d = N.defaultSheet, L = N.longSheet;
+  if (L && r.skipped.size && Math.abs(settings.mat.w - d.w) < 1 && Math.abs(settings.mat.h - d.h) < 1) {
+    const r2 = await nestGroup(list, { w: L.w, h: L.h }, settings.gap, settings.margin, o);
+    if (skippedCount(r2) < skippedCount(r)) { r2.auto = true; r2.strategy += " · 4' × 14' sheet (part longer than 10')"; r = r2; }
+  }
+  return r;
+}
+
+// The whole nesting step. settings: {mat:{w,h}, gap, margin, skeleton, sections}. onGroupDone(group, index, count) is optional.
 async function nestJob(parts, settings, onProgress, onGroupDone) {
   const t0 = performance.now(), byGauge = groupByGauge(parts), groups = [];
   for (let gi = 0; gi < byGauge.length; gi++) {
     const { gauge, list } = byGauge[gi];
-    const r = await nestGroup(list, settings.mat, settings.gap, settings.margin, {
-      skeleton: settings.skeleton,
-      onProgress: onProgress && ((n, t) => onProgress(gi, byGauge.length, n, t)),
-    });
+    const r = await nestGauge(list, settings, onProgress && ((n, t) => onProgress(gi, byGauge.length, n, t)));
     const g = { gauge, r, req: list.map(p => ({ part: p, qty: p.qty })) };
     groups.push(g);
     if (onGroupDone) onGroupDone(g, gi, byGauge.length);
