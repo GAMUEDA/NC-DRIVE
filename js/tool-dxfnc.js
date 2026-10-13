@@ -1,13 +1,18 @@
 /* =====================================================================================================
    TOOL · DXF TO NC (dxf_to_nc.html) — DXF files on the left, their .nc files on the right (P12 dxfToNc)
-   Bottom options: 1 save the .nc files to a USB drive · 2 copy them to a folder · 3 clear and input new DXF.
+   nest_admin 5's conversion with its default conditions: all four clean-ups on, OMIT-list parts refused at the drop.
+   DXF files are listed when they are dropped; CONVERT (or Ctrl+Enter) makes the .nc files. Changing a clean-up option
+   marks them out of date until CONVERT is pressed again.
+   Bottom options: CONVERT · 1 save the .nc files to a USB drive · 2 copy them to a folder · 3 clear and input new DXF.
    The USB drive is the same one Copy to Drive and Erase USB use (folders.js 'usb'); the folder is remembered as 'ncFolder'.
    ===================================================================================================== */
-const dx = { rows: [], sel: -1, busy: false, usb: null, folder: null }; // rows: [{file, nc}] — nc = dxfToNc() result
+const dx = { rows: [], sel: -1, busy: false, usb: null, folder: null }; // rows: [{file, nc, working}] — nc = dxfToNc() result, null until converted
+const DX_OPT_IDS = ['dxClean', 'dxBend', 'dxEtch', 'dxFeat']; // nest_admin 5 default: every one on
 
 const dxOpts = () => ({ clean: $('#dxClean').checked, bend: $('#dxBend').checked, etch: $('#dxEtch').checked, feat: $('#dxFeat').checked });
 const kb = n => (n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB');
 const okRows = () => dx.rows.filter(r => r.nc && !r.nc.error);
+const pendingRows = () => dx.rows.filter(r => !r.nc);
 
 // ---- the two lists ----
 function renderDx() {
@@ -15,12 +20,12 @@ function renderDx() {
   $('#dxCount').textContent = dx.rows.length ? `${dx.rows.length} file${dx.rows.length > 1 ? 's' : ''}` : '';
   $('#ncCount').textContent = ok.length ? `${ok.length} .nc` : '';
   $('#dxTable').innerHTML = '<tr><th>#</th><th>DXF file</th><th>Size (mm)</th><th>Clean-up</th></tr>' + (dx.rows.length
-    ? dx.rows.map((r, i) => `<tr data-i="${i}" class="${i === dx.sel ? 'sel' : ''}"><td class="mono">${i + 1}</td><td class="nm" title="${esc(r.file.name)}">${esc(r.file.name)}</td><td class="mono">${r.nc && !r.nc.error ? r.nc.w.toFixed(1) + ' × ' + r.nc.h.toFixed(1) : ''}</td><td class="muted">${r.nc ? (r.nc.error ? '' : esc(r.nc.notes.join(', ') || '—')) : 'reading…'}</td></tr>`).join('')
+    ? dx.rows.map((r, i) => `<tr data-i="${i}" class="${i === dx.sel ? 'sel' : ''}"><td class="mono">${i + 1}</td><td class="nm" title="${esc(r.file.name)}">${esc(r.file.name)}</td><td class="mono">${r.nc && !r.nc.error ? r.nc.w.toFixed(1) + ' × ' + r.nc.h.toFixed(1) : ''}</td><td class="muted">${r.nc ? (r.nc.error ? '' : esc(r.nc.notes.join(', ') || '—')) : r.working ? 'reading…' : '—'}</td></tr>`).join('')
     : '<tr><td colspan="4" class="muted">No DXF files yet. Drop them above.</td></tr>');
   $('#ncTable').innerHTML = '<tr><th>#</th><th>NC file</th><th>Pierces</th><th>Cut</th><th>Size</th><th></th></tr>' + (dx.rows.length
     ? dx.rows.map((r, i) => {
         const n = r.nc;
-        if (!n) return `<tr data-i="${i}"><td class="mono">${i + 1}</td><td colspan="5" class="muted">converting…</td></tr>`;
+        if (!n) return `<tr data-i="${i}"><td class="mono">${i + 1}</td><td colspan="5" class="wait">${r.working ? 'converting…' : 'press CONVERT'}</td></tr>`;
         if (n.error) return `<tr data-i="${i}" class="${i === dx.sel ? 'sel' : ''}"><td class="mono">${i + 1}</td><td colspan="5" class="bad">${esc(n.error)}</td></tr>`;
         return `<tr data-i="${i}" class="${i === dx.sel ? 'sel' : ''}"><td class="mono">${i + 1}</td><td class="nm"><span class="ext nc">NC</span> ${esc(n.ncName)}${n.openCount ? ` <span class="warnc" title="Contours that do not close: check the drawing">· ${n.openCount} open</span>` : ''}</td><td class="mono">${n.pierces}</td><td class="mono">${(n.cutLen / 1000).toFixed(2)} m</td><td class="mono">${kb(new Blob([n.text]).size)}</td><td><button class="ghost mini dlNc" title="Download this .nc">⬇</button></td></tr>`;
       }).join('')
@@ -28,7 +33,10 @@ function renderDx() {
   updDxButtons();
 }
 function updDxButtons() {
-  const n = okRows().length;
+  const n = okRows().length, waiting = pendingRows().length;
+  $('#dxConvert').disabled = !waiting || dx.busy;
+  $('#dxConvert').classList.toggle('stale', !!waiting);
+  $('#dxConvert').textContent = waiting && n ? `CONVERT ${waiting}` : 'CONVERT';
   $('#dxUsb').disabled = !n || dx.busy;
   $('#dxFolder').disabled = !n || dx.busy;
   $('#dxNew').disabled = dx.busy;
@@ -45,39 +53,62 @@ function setDxBar(task, done, total, state) {
   $('#dxBar').firstElementChild.style.width = (total ? (100 * done) / total : 0).toFixed(1) + '%';
 }
 
-// ---- read and convert ----
-async function addDxf(files) {
-  files = [...files].filter(f => { if (/\.dxf$/i.test(f.name)) return true; log(`${f.name}: not a .dxf — skipped`, 'warn'); return false; });
-  if (!files.length || dx.busy) return;
-  const fresh = files.filter(f => !dx.rows.some(r => r.file.name.toLowerCase() === f.name.toLowerCase()));
-  files.filter(f => !fresh.includes(f)).forEach(f => log(`${f.name} is already in the list`, 'warn'));
-  if (!fresh.length) return;
-  dx.busy = true;
-  const start = dx.rows.length;
-  fresh.forEach(file => dx.rows.push({ file, nc: null }));
+// ---- list, then convert ----
+// Dropped files go in the left list (nest_admin 5's drop rules: .dxf only, never twice, never an OMIT-list part).
+function addDxf(files) {
+  if (dx.busy) return;
+  const refused = [];
+  files = [...files].filter(f => {
+    if (!/\.dxf$/i.test(f.name)) { log(`${f.name}: not a .dxf — skipped`, 'warn'); return false; }
+    const om = omitHitName(f.name);
+    if (om) { refused.push(f.name); log(`${f.name} is on the OMIT list (${om}) — it can't be done on the laser, so it was not added`, 'warn'); return false; }
+    if (dx.rows.some(r => r.file.name.toLowerCase() === f.name.toLowerCase())) { log(`${f.name} is already in the list`, 'warn'); return false; }
+    return true;
+  });
+  files.forEach(file => dx.rows.push({ file, nc: null }));
+  if (files.length) log(`${files.length} DXF added — press CONVERT`, 'ok');
+  const waiting = pendingRows().length;
+  $('#dxStatus').innerHTML = (waiting ? `${waiting} DXF ready. Press <b>CONVERT</b>.` : '') + (refused.length ? ` <span class="warnc">Not added (OMIT list): ${esc(refused.join(', '))}.</span>` : '');
   renderDx();
+}
+// CONVERT: every DXF without a current .nc goes through nest_admin 5's program (P2 read → P3 clean → P6 write).
+async function convertAll() {
+  const todo = pendingRows();
+  if (!todo.length || dx.busy) return;
+  dx.busy = true;
+  const opts = dxOpts();
   let done = 0, bad = 0;
-  for (const r of dx.rows.slice(start)) {
-    setDxBar(`Converting ${r.file.name}`, done, fresh.length);
-    reportProgress('DXF to NC', `${r.file.name} · ${done + 1} of ${fresh.length}`, done / fresh.length);
-    try { r.nc = await dxfToNc(r.file, dxOpts()); } catch (e) { r.nc = { error: `${r.file.name}: ${e.message || e}` }; }
+  for (const r of todo) {
+    r.working = true;
+    renderDx();
+    setDxBar(`Converting ${r.file.name}`, done, todo.length);
+    reportProgress('DXF to NC', `${r.file.name} · ${done + 1} of ${todo.length}`, done / todo.length);
+    try { r.nc = await dxfToNc(r.file, opts); } catch (e) { r.nc = { error: `${r.file.name}: ${e.message || e}` }; }
+    r.working = false;
     if (r.nc.error) { bad++; log(r.nc.error, r.nc.kind || 'bad'); }
     else log(`${r.file.name} → ${r.nc.ncName} · ${r.nc.pierces} pierces${r.nc.openCount ? ` · ${r.nc.openCount} open contour${r.nc.openCount > 1 ? 's' : ''}` : ''}`, r.nc.openCount ? 'warn' : 'ok');
     done++;
-    renderDx();
   }
   dx.busy = false;
-  setDxBar(`Converted ${done - bad} of ${done}`, done, fresh.length, bad ? 'bad' : 'ok');
+  setDxBar(`Converted ${done - bad} of ${done}`, done, todo.length, bad ? 'bad' : 'ok');
   reportProgress('DXF to NC', `${done - bad} .nc made${bad ? ` · ${bad} failed` : ''}`, 1, true);
   $('#dxStatus').innerHTML = `${okRows().length} .nc file${okRows().length === 1 ? '' : 's'} ready.` + (bad ? ` <span class="bad">${bad} DXF could not be converted.</span>` : '');
   renderDx();
 }
-// a clean-up option changed: convert every file again
-async function reconvert() {
-  if (!dx.rows.length || dx.busy) return;
-  const files = dx.rows.map(r => r.file);
-  dx.rows = [];
-  await addDxf(files);
+// a clean-up option changed: every .nc is out of date until CONVERT is pressed again
+function optionsChanged() {
+  if (dx.busy) return;
+  if (!dx.rows.length) return;
+  dx.rows.forEach(r => (r.nc = null));
+  $('#dxProg').hidden = true;
+  $('#dxStatus').innerHTML = 'Clean-up changed. Press <b>CONVERT</b> to make the .nc files again.';
+  renderDx();
+}
+function dxDefaults() {
+  const changed = DX_OPT_IDS.filter(id => !$('#' + id).checked);
+  changed.forEach(id => ($('#' + id).checked = true));
+  log('clean-up set to the nest_admin 5 defaults (all on)', 'ok');
+  if (changed.length) optionsChanged();
 }
 function clearDx(openPicker) {
   if (dx.busy) return;
@@ -159,7 +190,10 @@ function startDxfNcPage() {
   zone.addEventListener('dragleave', () => zone.classList.remove('over'));
   zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('over'); addDxf(e.dataTransfer.files); });
   window.addEventListener('drop', e => { if (e.dataTransfer.files.length) addDxf(e.dataTransfer.files); }); // a drop anywhere on the page
-  ['dxClean', 'dxBend', 'dxEtch', 'dxFeat'].forEach(id => $('#' + id).addEventListener('change', reconvert));
+  DX_OPT_IDS.forEach(id => $('#' + id).addEventListener('change', optionsChanged));
+  $('#dxDefaults').onclick = dxDefaults;
+  $('#dxConvert').onclick = convertAll;
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); convertAll(); } });
   // a row click selects the pair; ⬇ downloads that .nc
   const onRow = e => {
     const tr = e.target.closest('tr[data-i]');
@@ -184,5 +218,5 @@ function startDxfNcPage() {
   renderDx();
 }
 
-window.NCDriveTool = { CONFIG, process: { dxfToNc, makeSheetNc, loadPartFile }, dx, link: NCLink };
+window.NCDriveTool = { CONFIG, process: { dxfToNc, makeSheetNc, loadPartFile, convertAll, omitHitName }, dx, link: NCLink };
 startDxfNcPage();

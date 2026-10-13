@@ -20,15 +20,17 @@
         <label class="chk"><input type="checkbox" id="dxBend" checked> Remove bend lines</label>
         <label class="chk"><input type="checkbox" id="dxEtch" checked> Detect etched text</label>
         <label class="chk"><input type="checkbox" id="dxFeat" checked> Skip countersink / feature outlines</label>
+        <button class="ghost mini" id="dxDefaults" title="Put every clean-up option back to the nest_admin 5 default (all on)">Defaults</button>
       </span>
     </div>
     <div class="dxView">
       <section class="dxPane"><div class="dxHead"><b>DXF files</b><span class="muted mono" id="dxCount"></span></div><div class="tblWrap"><table class="tbl" id="dxTable"></table></div></section>
       <section class="dxPane"><div class="dxHead"><b>NC files</b><span class="muted mono" id="ncCount"></span></div><div class="tblWrap"><table class="tbl" id="ncTable"></table></div></section>
     </div>
-    <div class="note">Each DXF becomes its own .nc with the same name, zeroed at the part's lower-left corner (G92), metric, incremental, holes before the outer profile, etching as M11/M09. Feed and power are set on the machine. ⬇ on a row downloads that one file.</div>
+    <div class="note">Converted with nest_admin 5's program and its default conditions: stray geometry, bend lines and feature outlines removed, etched text found and marked, and parts on the never-programmed (OMIT) list refused. Drop the DXF files, then press <b>CONVERT</b>. Each DXF becomes its own .nc with the same name, zeroed at the part's lower-left corner (G92), metric, incremental, holes before the outer profile, etching as M11/M09. Feed and power are set on the machine. ⬇ on a row downloads that one file.</div>
   </div>
   <div class="df dxFoot">
+    <div class="dxOpt dxConvert"><button class="convertBtn" id="dxConvert" disabled title="Turns every DXF in the left list into its .nc (Ctrl+Enter)">CONVERT</button></div>
     <div class="dxOpt"><button id="dxUsb" disabled title="Writes every .nc onto the USB drive">1 · Save NC to USB drive</button><span class="mono dxTarget" id="dxUsbName"></span><button class="ghost mini" id="dxUsbPick" title="Choose the USB drive (or a folder on it)">Change…</button></div>
     <div class="dxOpt"><button id="dxFolder" disabled title="Copies every .nc into a folder">2 · Copy NC to a folder</button><span class="mono dxTarget" id="dxFolderName"></span><button class="ghost mini" id="dxFolderPick" title="Choose the folder">Change…</button></div>
     <div class="dxOpt"><button class="ghost" id="dxNew" title="Empties both lists and opens the file picker">3 · Clear and input new DXF</button></div>
@@ -41,6 +43,7 @@
 <script src="js/config.js"></script>
 <script src="js/link.js"></script>
 <script src="js/folders.js"></script>
+<script src="js/rules.js"></script>
 <script src="js/pdf-reader.js"></script>
 <script src="js/p1-geometry.js"></script>
 <script src="js/p2-load.js"></script>

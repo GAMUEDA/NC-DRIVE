@@ -15,6 +15,7 @@
      js/config.js         this file: every setting
      js/common.js         small helpers ($, esc, matching, openNamed)    js/link.js     main ↔ tool messages
      js/folders.js        folder access + remembered folders              js/pdf-reader.js  pdf.js loader
+     js/rules.js          laser rules: OMIT list, fixed materials, DXF-only parts   omitHitName(), fixedMaterialOf()
      js/p1-geometry.js    P1  arcs / bulges / splines → point lists       tessellate()
      js/p2-load.js        P2  file → raw entities → part                  parseDXF(), parseNC(), loadPartFile()
      js/p3-clean.js       P3  stray, bend lines, etch text, features      cleanPart()
