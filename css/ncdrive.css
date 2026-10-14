@@ -235,10 +235,10 @@
   #main > *:not(.scope) { position: relative; z-index: 1; }
   .scope { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; display: grid; place-items: center; }
   .scope svg { width: min(96%, 96vh); aspect-ratio: 1; opacity: .55; }
-  .scope .spin { transform-origin: 50% 50%; animation: scopeSpin 60s linear infinite; }
-  .scope .spin2 { transform-origin: 50% 50%; animation: scopeSpin 90s linear infinite reverse; }
+  .scope .spin { transform-origin: 50% 50%; animation: scopeSpin 12s linear infinite; }
+  .scope .spin2 { transform-origin: 50% 50%; animation: scopeSpin 18s linear infinite reverse; }
   @keyframes scopeSpin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .scope .spin, .scope .spin2, .hudState.busy { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .hudState.busy { animation: none; } } /* the bulls-eye keeps spinning even when Windows animations are off */
   #main:has(.report) .scope { display: none; }
   .report table { background: rgba(6,16,27,.96); }
   #viewHead h2 { color: var(--ink); letter-spacing: .1em; text-transform: uppercase; }
