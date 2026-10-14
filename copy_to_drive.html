@@ -23,17 +23,19 @@
     <div class="step"><div class="sn">3</div><div>
       <label class="lb" for="cpTypes">File types to copy</label>
       <div class="row"><input class="txt" id="cpTypes" value="NC, PDF" placeholder="NC, PDF"><span id="cpTypesNote" style="font-size:12px;"></span></div></div></div>
-    <div class="step"><div class="sn">4</div><div>
+    <div class="cpCols">
+    <div class="step cpCol"><div class="sn">4</div><div class="cpColBody">
       <label class="lb" for="cpParts">Part numbers — read from the PDF</label>
       <div class="drop" id="cpDrop" style="margin:0 0 6px;">Drop the parts-list / work-order PDF here (CSV or text works too), or click to browse</div>
       <input type="file" id="cpFile" accept=".pdf,.csv,.txt,.tsv" hidden>
       <textarea class="ta" id="cpParts" placeholder="One part number per line — filled in from the PDF, or type / paste them"></textarea>
       <div class="row" style="margin-top:4px;"><span class="mono" id="cpCount"></span><span class="note" id="cpListSrc"></span></div></div></div>
-    <div class="step"><div class="sn">5</div><div>
-      <label class="lb">Process</label>
+    <div class="step cpCol"><div class="sn">5</div><div class="cpColBody">
+      <label class="lb">Processed — files copied <span class="mono muted" id="cpDoneCount"></span></label>
       <div class="row"><button id="cpRun">Copy files</button><button class="ghost" id="cpStop" hidden>Stop</button><span class="note">For each part: the newest file of each type. A type that is missing (e.g. no NC) → the part's DXF is copied instead, into the same target drive.</span></div>
       <progress id="cpBar" hidden></progress>
-      <div class="tblWrap" id="cpWrap" hidden style="margin-top:8px;"><table class="tbl" id="cpTable"></table></div></div></div>
+      <div class="tblWrap" id="cpWrap" style="margin-top:8px;"><table class="tbl" id="cpTable"></table></div></div></div>
+    </div>
   </div></div>
   <div class="df"><span class="grow" id="cpStatus"></span></div>
   <pre class="toolLog" id="toolLog" aria-label="Log"></pre>

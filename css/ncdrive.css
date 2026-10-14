@@ -373,6 +373,17 @@
   .tool.page .toolLog { flex: 0 0 auto; }
   @media (max-width: 760px) { .tool.page { margin: 0; height: 100%; } }
 
+  /* ================= Copy to Drive: steps 4 and 5 side by side (part numbers | files processed) ================= */
+  #dlgCopy .steps { min-height: 100%; }
+  .cpCols { flex: 1 1 auto; min-height: 320px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.6fr); gap: 16px; }
+  .cpCol { min-height: 0; min-width: 0; }
+  .cpColBody { display: flex; flex-direction: column; min-height: 0; min-width: 0; height: 100%; }
+  .cpColBody #cpParts { flex: 1 1 auto; min-height: 180px; resize: none; }
+  .cpColBody #cpWrap { flex: 1 1 auto; min-height: 180px; }
+  .cpColBody .row .note { flex: 1 1 100%; }
+  #cpTable td.empty { color: var(--muted); font-style: italic; }
+  @media (max-width: 860px) { .cpCols { grid-template-columns: 1fr; } }
+
   /* ================= Erase USB: drives, active drive, file list + preview, progress bar ================= */
   .usbActive { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.06); font-size: 12px; }
   .usbActive b { color: var(--accent); }

@@ -89,7 +89,9 @@ async function readCopyList(f) {
 }
 // Step 5: results table.
 function renderCopyRows() {
-  $('#cpWrap').hidden = !cp.rows.length;
+  const done = cp.rows.filter(r => r.st === 'ok' || r.st === 'dxf').length;
+  $('#cpDoneCount').textContent = cp.rows.length ? `${done} of ${cp.rows.filter(r => r.st !== 'dxfdup').length}` : '';
+  if (!cp.rows.length) { $('#cpTable').innerHTML = '<thead><tr><th>Part</th><th>Type</th><th>File</th><th>Result</th></tr></thead><tbody><tr><td colspan="4" class="empty">Press Copy files. Each part\'s files show here as they are copied.</td></tr></tbody>'; return; }
   let last = '';
   $('#cpTable').innerHTML = '<thead><tr><th>Part</th><th>Type</th><th>File</th><th>Result</th></tr></thead><tbody>' + cp.rows.map(r => {
     const first = r.part !== last;
@@ -131,7 +133,7 @@ async function runCopy() {
       onPlan: rows => { cp.rows = rows; renderCopyRows(); bar.max = rows.filter(x => x.st === 'wait').length || 1; bar.value = 0; },
       onRow: (row, phase) => {
         if (phase === 'start') { renderCopyRows(); st.textContent = `Copying ${row.f.name}…`; }
-        else { bar.value++; reportProgress('Copy to drive', `${bar.value} of ${bar.max} files`, bar.value / bar.max); }
+        else { bar.value++; renderCopyRows(); reportProgress('Copy to drive', `${bar.value} of ${bar.max} files`, bar.value / bar.max); }
       },
     });
     if (res.stoppedWhileSearching) { st.innerHTML = '<span class="warnc">Stopped while searching — nothing was copied.</span>'; reportProgress('Copy to drive', 'stopped', 0, true); return; }
@@ -179,7 +181,7 @@ function startCopyPage() {
   NCLink.on('drive-changed', reloadTarget);
   onMainChange(m => { if (m && m.job && !cp.jobTyped) $('#cpJob').value = m.job; });
   if (params.get('parts')) setCopyParts(splitTerms(params.get('parts')), params.get('src'));
-  renderCpRoots(); showTypes(); showTarget(); countParts();
+  renderCpRoots(); showTypes(); showTarget(); countParts(); renderCopyRows();
 }
 
 window.NCDriveTool = { CONFIG, process: { copyPartsToDrive, planCopy, copyPlannedFiles, parseTypes, searchLibrary, readPartsList }, cp, lib, link: NCLink };
