@@ -275,3 +275,21 @@ function wireSettings() {
   $('#resetSheet').onclick = () => { S.sheetCustom = false; setBed(S.bed); };
   setBed(0);
 }
+
+// ---- bulls-eye speed (the slider next to Sheet / Report): 0 = stopped, 4 = normal (12 s / 18 s a turn), 10 = 8× ----
+const SPIN_RATES = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8];
+function setSpinSpeed(i) {
+  i = Math.max(0, Math.min(SPIN_RATES.length - 1, Math.round(+i)));
+  if (!Number.isFinite(i)) i = 4;
+  const rate = SPIN_RATES[i];
+  // playbackRate keeps each ring where it is and only changes its speed
+  document.querySelectorAll('.scope .spin, .scope .spin2').forEach(el => el.getAnimations().forEach(a => (a.playbackRate = rate)));
+  $('#spinSpeed').value = i;
+  $('#spinVal').textContent = rate ? rate + '×' : 'stop';
+  ls.set('spinSpeed', String(i));
+}
+function wireSpinSpeed() {
+  if (!$('#spinSpeed')) return;
+  $('#spinSpeed').addEventListener('input', e => setSpinSpeed(e.target.value));
+  setSpinSpeed(ls.get('spinSpeed', '4'));
+}

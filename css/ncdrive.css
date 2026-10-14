@@ -373,6 +373,13 @@
   .tool.page .toolLog { flex: 0 0 auto; }
   @media (max-width: 760px) { .tool.page { margin: 0; height: 100%; } }
 
+  /* ================= bulls-eye speed control (#viewHead) ================= */
+  .viewCtl { display: flex; align-items: center; gap: 12px; }
+  .spinCtl { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); cursor: pointer; }
+  .spinIco { color: var(--accent2); font-size: 14px; line-height: 1; }
+  .spinCtl input[type=range] { width: 96px; accent-color: var(--accent2); cursor: pointer; }
+  #spinVal { min-width: 34px; color: var(--ink); }
+
   /* ================= Copy to Drive: steps 4 and 5 side by side (part numbers | files processed) ================= */
   #dlgCopy .steps { min-height: 100%; }
   .cpCols { flex: 1 1 auto; min-height: 320px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.6fr); gap: 16px; }

@@ -14,6 +14,7 @@ function startNcDrive() {
   wireToolLink();
   wireProgress();
   wireStatusPanel();
+  wireSpinSpeed();
   startClock();
   renderParts();
   renderSheets();
