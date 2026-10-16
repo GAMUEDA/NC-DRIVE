@@ -538,6 +538,7 @@
   body.na8 #na8Frame { display: block; }
   body.na8 #main, body.na8 #side { visibility: hidden; }
   body.na8 #middle > .wall[data-edge="right"] { z-index: 3; }
+  body.na8 #middle > .wall[data-edge="right"]:not(:hover):not(.active):not(:focus-visible) { background: transparent; } /* no line across nest_admin 8 pop-ups; it lights up when you grab it */
   body.dragging #na8Frame { pointer-events: none; }
   body.na8 #loadBtn, body.na8 #nestBtn, body.na8 #zipBtn, body.na8 #reportBtn { display: none; }
   button.ghost.na8Toggle.on { border-color: var(--accent2); color: var(--accent2); }
