@@ -529,3 +529,16 @@
   .wall.h { background: linear-gradient(transparent 3px, var(--gap-line) 3px, var(--gap-line) 5px, transparent 5px); }
   .wall:hover, .wall.active, .wall:focus-visible { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
   .tool.page { border: var(--box-line-width) solid var(--box-line); }
+
+  /* ================= NEST ADMIN 8 (js/na8-panel.js) =================
+     nest_admin_8.html runs in one frame laid over the PREVIEW and STATUS boxes: its controls on the right, its sheets in the centre.
+     The header button switches back to the NC Drive screens (body loses .na8). */
+  #middle { position: relative; }
+  #na8Frame { display: none; position: absolute; inset: 0; grid-row: 1; grid-column: 3 / 6; width: 100%; height: 100%; background: #17191c; border: var(--box-line-width) solid var(--box-line); z-index: 2; } /* absolute: covers that grid area without taking a grid cell */
+  body.na8 #na8Frame { display: block; }
+  body.na8 #main, body.na8 #side { visibility: hidden; }
+  body.na8 #middle > .wall[data-edge="right"] { z-index: 3; }
+  body.na8 #middle > .wall[data-edge="right"]:not(:hover):not(.active):not(:focus-visible) { background: transparent; } /* no line across nest_admin 8 pop-ups; it lights up when you grab it */
+  body.dragging #na8Frame { pointer-events: none; }
+  body.na8 #loadBtn, body.na8 #nestBtn, body.na8 #zipBtn, body.na8 #reportBtn { display: none; }
+  button.ghost.na8Toggle.on { border-color: var(--accent2); color: var(--accent2); }
