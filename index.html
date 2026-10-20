@@ -15,6 +15,7 @@
       <span class="muted sub mono" id="hdrSub">DXF → nest → NC → report</span></div>
     <div class="actions">
       <div class="hudReadout" aria-live="polite"><span class="hudState" id="hudState">IDLE</span><span class="hudClock" id="hudClock"></span></div>
+      <button class="ghost na8Toggle" id="na8Btn" title="Switch between nest_admin 8 and the NC Drive screens">Nest admin 8</button>
       <button class="ghost" id="loadBtn" title="Add .dxf, .nc or drawing .pdf files">Load files…</button>
       <button id="nestBtn" disabled title="Nest every part, one nest per gauge">Nest</button>
       <button class="ghost" id="zipBtn" disabled title="Every sheet's .nc file in one .zip">Download NC</button>
@@ -209,6 +210,8 @@
 <script src="js/ui-status.js"></script>
 <script src="js/main-tools.js"></script>
 <script src="js/start.js"></script>
+<script src="js/nest-admin8-src.js"></script>
+<script src="js/na8-panel.js"></script>
 <script>
 /* folder check: this page needs css/ and js/ next to it. If they did not load (page opened on its own, or straight from inside the zip), say so instead of showing a broken screen. */
 addEventListener('load', function () {
