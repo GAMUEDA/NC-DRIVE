@@ -460,6 +460,11 @@
   .dxDrop { flex: 1 1 260px; padding: 14px; }
   .dxOpts .optGroup { display: flex; flex-wrap: wrap; gap: 4px 14px; }
   .dxOpts .chk { margin: 0; }
+  .dxPartBox { flex: 0 1 380px; display: flex; flex-direction: column; gap: 4px; }
+  .dxPartBox .lb { font-size: 12px; font-weight: 600; }
+  .dxPartBox .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .dxPartBox #dxPart { flex: 1 1 150px; font-size: 14px; }
+  .dxTur { font-size: 11px; color: var(--muted); }
   .dxView { flex: 1 1 auto; min-height: 240px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
   .dxPane { display: flex; flex-direction: column; min-height: 0; border: 1px solid rgba(34,211,238,.35); background: rgba(3,10,18,.55); }
   .dxHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(34,211,238,.25); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }

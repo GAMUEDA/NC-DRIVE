@@ -28,6 +28,8 @@
      js/p10-copy.js       P10 copy files, DXF when a type is missing      copyPartsToDrive(), planCopy()
      js/p11-usb.js        P11 list / erase / write files on a stick       scanDrive(), eraseFiles(), writeJobToDrive()
      js/p12-dxfnc.js      P12 one .dxf → one .nc (no nesting)             dxfToNc()
+     js/p13-turret.js     P13 turret strip DXF → AMADA programs -1…-4    turretPart(), turretPrograms()
+     js/p14-turret-pdf.js P14 the program sheet PDF for each turret .nc  turretReportPdf()   (falk-logo.js = its logo)
      js/ui-core.js, ui-job.js, ui-progress.js, ui-status.js, main-tools.js, start.js   main page screen
      (ui-status.js = STATUS box: add to the current nest, zones, parts folder, laser rules, settings lock)
      js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js / tool-dxfnc.js   tool page screens
@@ -136,6 +138,45 @@ const CONFIG = {
   // lockedByDefault: true = Spacing and DXF clean-up are locked until the admin key is typed (click 🔒 at the bottom of the
   // STATUS box; the unlock is remembered by this browser). false = never locked (nest_admin 5 is an admin build).
   admin: { key: 'nest-admin-3369', lockedByDefault: false, lockIds: ['gapIn', 'marginIn', 'skelChk', 'sectChk', 'cleanChk', 'bendChk', 'etchChk', 'featChk'] },
+
+  // ---- turret programs (DXF to NC, P13): parts punched on the AMADA turret, not the laser ----
+  // A DXF whose part number has a template here becomes that template's programs (.nc + .pdf report) instead of a laser .nc.
+  // Offsets are inches from the part's own edges; they come from the shop's sample programs 14443_10073 - 1 … - 4.
+  turret: {
+    machine: 'AMADA-AE2510-NT-45ST-4AI',
+    nonOutline: /FEATURE_PROFILES|ARC_CENTER|TANGENT|BEND|CENTERMARK|UNCONSUMED|ALTREP/i, // not part of the outline
+    featureLayer: /FEATURE_PROFILES/i,                                                  // circles here = emboss centres
+    densityKgM3: 7800,
+    report: { rapidMinPerM: 0.1082, punchMinPerHit: 0.00131, nibbleMinPerM: 0.0917, nibbleMinPerHit: 0.00204, toolChangeMin: 0.0671, loadMin: 0.10 }, // fitted to the sample reports
+    templates: {
+      '14443': {
+        material: 'GALVANIZED', grade: 'GALVANIZED 1.61 mm 16g', thicknessMM: 1.61,
+        clamps: [6, 37, 43],                 // inches
+        g92: 'G92 X98.425 Y50.0',
+        origin: { x: 0.9375, y: 4.4375 },    // the first part's lower-left corner on the sheet (in)
+        gap: 0.25,                           // slit between parts = the rect tool's width (in)
+        edge: 0.3125,                        // room kept past the last tool hit (in)
+        indexSafeY: 8.268,                   // the turret only indexes a tool above this Y: lower first hits move here with G70 first
+        singlePartEmbossRightDown: true,     // as the sample: with one part the emboss runs the right side top → bottom
+        // -1 … -4: parts per sheet and sheet size (in). 'max' = as many as fit up the sheet.
+        programs: [
+          { suffix: 1, count: 1, sheet: [49.212, 49.212], firstLine: '' },
+          { suffix: 2, count: 2, sheet: [49.212, 49.212] },
+          { suffix: 3, count: 3, sheet: [49.212, 49.212] },
+          { suffix: 4, count: 'max', sheet: [48, 48] },
+        ],
+        tools: {
+          hole:    { no: 318, m: 'M500', ut: 'ROUND   0.1772   KEYED   0.00', comment: 'RO 0.1772 C500', name: 'RO 4.50 (.177)', dims: '4.50 x 0.00 mm' },
+          bk20:    { no: 236, m: 'M500', ut: 'SPC BKRAD-20   KEYED   INDEX', comment: 'SP BKRAD-20 ANG. 0. C500', name: 'BKRAD-20', dims: '10.85 x 15.93 mm', bl: 0.7055, br: 0.3575, tl: 0.3575, tr: 0.7055, dy: 0.4375 },
+          bk10:    { no: 225, m: 'M500', ut: 'SPC BKRAD-10   KEYED   INDEX', comment: 'SP BKRAD-10 ANG. 0. C500', name: 'BKRAD-10', dims: '10.85 x 15.93 mm', bl: 0.3575, br: 0.7055, tl: 0.7055, tr: 0.3575, dy: 0.4385 },
+          bowtie:  { no: 303, m: 'M500', ut: 'SPC BOWTIE-3.1750 MM   KEYED   0.00', comment: 'SP BOWTIE-3.1750 MM ANG. 0. C500', name: 'BOWTIE-3.1750 MM', dims: '1.59 x 6.35 mm', lineIn: 0.7945, side: 0.1245, dy: 0.6265, dyBot: 0.62697 },
+          endRect: { no: 201, m: 'M500', ut: 'RECT 1.8750X0.2500   KEYED   INDEX', comment: 'RE 1.875X0.25 ANG. 0. C500', name: 'RE 47.625x6.35', dims: '47.63 x 6.35 mm', len: 1.875, side: 0.1245, dy: 1.8893 },
+          slit:    { no: 245, m: 'M500', ut: 'RECT 4.0000X0.2500   KEYED   0.00', comment: 'RE 4.X0.25 ANG. 0. C500', name: 'RE 101.60x6.35', dims: '101.60 x 6.35 mm', len: 4.0, inset: 3.11905 },
+          emboss:  { no: 332, m: 'M532', ut: 'SPC M532 FD EMBOSS 25   KEYED   0.00', comment: 'SP M532 FD EMBOSS 25 ANG. 0. C532', name: 'M532 FD EMBOSS 25', dims: '25.40 x 25.40 mm' },
+        },
+      },
+    },
+  },
 
   // ---- screen ----
   // The screen is drawn for a designW × designH window and scaled to fit the real window each time a page opens
