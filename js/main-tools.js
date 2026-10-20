@@ -8,8 +8,8 @@
      dxf_to_nc.html      P12  DXF to NC           (works on its own: one .nc per .dxf, to a USB drive or a folder)
    Every tool also sends its log lines here, so the main log shows what the tools did.
    ===================================================================================================== */
-const TOOL_PAGES = { search: 'nc_search.html', copy: 'copy_to_drive.html', plist: 'parts_list.html', usb: 'erase_usb.html', dxfnc: 'dxf_to_nc.html' };
-const TOOL_KEYS = { 1: 'search', 2: 'copy', 3: 'plist', 4: 'usb', 5: 'dxfnc' }; // Alt+1..5
+const TOOL_PAGES = { search: 'nc_search.html', copy: 'copy_to_drive.html', plist: 'parts_list.html', usb: 'erase_usb.html', dxfnc: 'dxf_to_nc.html', ncsim: 'nc_sim.html' };
+const TOOL_KEYS = { 1: 'search', 2: 'copy', 3: 'plist', 4: 'usb', 5: 'dxfnc', 6: 'ncsim' }; // Alt+1..6
 
 // Open (or bring forward) a tool page. params are added to its address, e.g. {terms: '19992 14738'} (reloads it).
 function openTool(key, params) {

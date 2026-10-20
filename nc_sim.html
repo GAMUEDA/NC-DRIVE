@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NC Part Simulator · NC Drive</title>
+<!-- NC Part Simulator — NC Path Simulator v7: plays a punch / turret or laser .nc program hit by hit; runs on its own; links to index.html when it is open (js/link.js). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/ncsim.css">
+</head>
+<body class="ncsimPage">
+<div class="wrap">
+  <div class="brand ncdBar"><a class="ncdBrand" href="index.html" id="ncdHome" title="NC Drive main page">NC <span>DRIVE</span></a><b>NC Part Simulator</b><span>Punch · Turret · Laser · v7</span><span class="grow"></span><span class="linkState" id="linkState"></span><button type="button" id="openMain" title="Open (or go back to) index.html">Open NC Drive</button></div>
+
+  <section class="input" id="inbox" aria-label="Program input">
+    <label class="drop" for="file">
+      <span class="lbl">Program file</span>
+      <span class="big">Drop an NC program here or <u>browse</u></span>
+      <small>NC programs (.nc .txt .tap .cnc .min .eia) from turret punch, punch press or laser controls, or a .dxf drawing to convert into an NC program</small>
+      <input type="file" id="file" class="sr">
+    </label>
+    <div class="paste">
+      <label class="lbl" for="src">Or paste the program or DXF text</label>
+      <textarea id="src" spellcheck="false" placeholder="O1234 (PART NAME)&#10;G90&#10;G00 X1.0 Y1.0&#10;G01 X5.0 F120&#10;..."></textarea>
+    </div>
+    <div class="opts">
+      <div class="row"><label for="kind">Machine type</label>
+        <select id="kind"><option value="auto">Auto-detect</option><option value="punch">Punch / Turret</option><option value="laser">Laser / Plasma</option></select></div>
+      <div class="row"><label for="units">Units</label>
+        <select id="units"><option value="auto">Auto</option><option value="in">Inch</option><option value="mm">Millimetre</option></select></div>
+      <div class="row"><label for="kerf">Laser kerf (mm)</label><input type="number" id="kerf" value="0.20" min="0" step="0.05"></div>
+      <div class="reproc">
+        <div class="src" id="srcInfo">No file loaded yet</div>
+        <button class="rp" id="reproc" type="button" disabled>Re-process file</button>
+        <button id="optBtn" type="button" disabled title="Laser programs: cut inner contours nearest-first, perimeter last">Optimize cut order</button>
+        <div class="opt-res" id="optRes"></div>
+        <div class="pend" id="pend1" hidden>Settings changed. Re-process to apply.</div>
+      </div>
+      <button id="run">Simulate pasted text</button>
+      <div class="samples"><button id="sPunch">Punch sample</button><button id="sLaser">Laser sample</button><button id="sDxf">DXF sample</button></div>
+    </div>
+    <div id="msg" class="ok" role="status"></div>
+  </section>
+
+  <section class="card dxf" id="dxfPanel" hidden aria-label="DXF to NC conversion">
+    <h2>DXF to NC <span id="dxfInfo"></span></h2>
+    <div class="dgrid">
+      <div class="fs">
+        <span class="lbl">Program</span>
+        <div class="f"><label for="dOut">Machine</label><select id="dOut"><option value="laser">Laser / Plasma</option><option value="punch">Punch / Turret</option></select></div>
+        <div class="f"><label for="dNum">Program no. (O)</label><input type="number" id="dNum" value="1001" min="1" max="9999" step="1"></div>
+        <div class="f"><label for="dName">Part name</label><input type="text" id="dName" spellcheck="false"></div>
+        <div class="f"><label for="dUnits">Output units</label><select id="dUnits"><option value="in">Inch</option><option value="mm">Millimetre</option></select></div>
+        <div class="f"><label for="dSrc">DXF units</label><select id="dSrc"><option value="auto">Auto</option><option value="in">Inch</option><option value="mm">Millimetre</option></select></div>
+      </div>
+      <div class="fs">
+        <span class="lbl">Material &amp; sheet</span>
+        <div class="f"><label for="dThick">Thickness <small class="du">in</small></label><input type="number" id="dThick" value="0.063" min="0" step="0.001"></div>
+        <div class="f"><label for="dMat">Material</label><input type="text" id="dMat" value="GALVANIZED" spellcheck="false"></div>
+        <div class="f"><label for="dMargin">Part offset from origin <small class="du">in</small></label><input type="number" id="dMargin" value="0.5" min="0" step="0.05"></div>
+        <div class="f"><label for="dSW">Sheet width <small class="du">in</small></label><input type="number" id="dSW" min="0" step="0.01" placeholder="auto"></div>
+        <div class="f"><label for="dSH">Sheet height <small class="du">in</small></label><input type="number" id="dSH" min="0" step="0.01" placeholder="auto"></div>
+      </div>
+      <div class="fs laserOnly">
+        <span class="lbl">Laser output</span>
+        <div class="f"><label for="dStyle">NC format</label><select id="dStyle"><option value="shop">Shop pattern (G91, G41/G40)</option><option value="std">Standard (G90, N numbers, feed)</option></select></div>
+        <div class="f"><label for="dComp">Kerf compensation</label><select id="dComp"><option value="G41">G41 left</option><option value="G42">G42 right</option><option value="">Off</option></select></div>
+        <div class="f"><label for="dOn">Beam on code</label><input type="text" id="dOn" value="M07" spellcheck="false"></div>
+        <div class="f"><label for="dOff">Beam off code</label><input type="text" id="dOff" value="M08" spellcheck="false"></div>
+        <div class="f"><label for="dFeed">Feed rate <small id="dFeedU">in/min</small></label><input type="number" id="dFeed" value="150" min="1" step="1"></div>
+        <div class="f"><label for="dDwell">Pierce dwell <small>s</small></label><input type="number" id="dDwell" value="0" min="0" step="0.1"></div>
+        <label class="tg"><input type="checkbox" id="dOpt" checked> Optimize cut order</label>
+        <label class="tg"><input type="checkbox" id="dCmt"> Header comment lines</label>
+        <label class="tg"><input type="checkbox" id="dOpen"> Cut open contours</label>
+        <p class="hint">Shop pattern matches ON-43868: no line numbers or feed, incremental moves, G41 before M07 and G40 after M08, M02 at the end. Feed is written only in the standard format.</p>
+      </div>
+      <div class="fs laserOnly">
+        <span class="lbl">Lead-in, lead-out &amp; tab</span>
+        <table class="leads">
+          <thead><tr><th></th><th>Holes &amp; text</th><th>Perimeter</th></tr></thead>
+          <tbody>
+            <tr><th><label for="dLeadH">Lead-in</label> <small class="du">in</small></th><td><input type="number" id="dLeadH" value="0" min="0" step="0.01" aria-label="Lead-in length for holes"></td><td><input type="number" id="dLeadP" value="0.0362" min="0" step="0.01" aria-label="Lead-in length for perimeter"></td></tr>
+            <tr><th>Lead-in angle</th><td><select id="dAngH" aria-label="Lead-in angle for holes"><option value="90">90°</option><option value="0">0°</option></select></td><td><select id="dAngP" aria-label="Lead-in angle for perimeter"><option value="90">90°</option><option value="0">0°</option></select></td></tr>
+            <tr><th>Lead-out <small class="du">in</small></th><td><input type="number" id="dOutH" value="0" min="0" step="0.01" aria-label="Lead-out length for holes"></td><td><input type="number" id="dOutP" value="0" min="0" step="0.01" aria-label="Lead-out length for perimeter"></td></tr>
+            <tr><th>Lead-out angle</th><td><select id="dOAngH" aria-label="Lead-out angle for holes"><option value="90">90°</option><option value="0">0°</option></select></td><td><select id="dOAngP" aria-label="Lead-out angle for perimeter"><option value="90">90°</option><option value="0">0°</option></select></td></tr>
+            <tr><th>End gap (tab) <small class="du">in</small></th><td><input type="number" id="dGapH" value="0" min="0" step="0.01" aria-label="End gap for holes"></td><td><input type="number" id="dGapP" value="0.0228" min="0" step="0.01" aria-label="End gap for perimeter"></td></tr>
+          </tbody>
+        </table>
+        <button id="dPattern" type="button">Reset to ON-43868 pattern</button>
+        <p class="hint">Pattern defaults: holes and text pierce on the line with no leads. The perimeter enters with a 0.92 mm lead at 90° from outside, has no lead-out, and stops 0.58 mm short of its start to leave a tab. 90° leads come straight in from the scrap. A 0° lead-in runs along the cut line, and a 0° lead-out overlaps past the start.</p>
+      </div>
+      <div class="fs punchOnly" hidden>
+        <span class="lbl">Punch tooling</span>
+        <label for="dTools" class="hint">Tool library in inches, one per line: T116 ROUND 0.149 · T236 SQUARE 0.3122 INDEX · T201 RECT 1.875 X 0.25 INDEX (or a fixed angle)</label>
+        <textarea id="dTools" spellcheck="false"></textarea>
+        <div class="f"><label for="dPitch">Nibble pitch <small class="du">in</small></label><input type="number" id="dPitch" value="0.06" min="0.001" step="0.005"></div>
+        <div class="f"><label for="dTol">Tool match tolerance <small class="du">in</small></label><input type="number" id="dTol" value="0.002" min="0" step="0.001"></div>
+        <button id="dReset" type="button">Restore default tools</button>
+      </div>
+    </div>
+    <div class="layers" id="dLayers"></div>
+    <div class="dnote" id="dMsg"></div>
+    <div class="dact">
+      <button class="primary rp" id="dGo" type="button">Re-process DXF</button>
+      <span class="pend" id="pend2" hidden>Settings changed. Re-process to apply.</span>
+    </div>
+  </section>
+
+  <section class="card dxf" id="outPanel" hidden aria-label="Program output">
+    <h2>Program output <span id="outInfo"></span></h2>
+    <div class="dact">
+      <span class="lbl">Save as</span>
+      <input type="text" id="dFile" aria-label="NC file name" spellcheck="false">
+      <label class="lbl" for="dRev">Rev</label>
+      <input type="number" id="dRev" value="1" min="1" max="999" step="1" style="width:72px">
+      <span class="lbl" id="dFileOut"></span>
+      <select id="dFmt" aria-label="Save format"><option value="zip">.nc inside .zip</option><option value="txt">.nc.txt (remove .txt)</option></select>
+      <button id="dSave" type="button">Save NC file</button>
+      <button id="dCopy" type="button">Copy NC</button>
+    </div>
+    <div class="dnote" id="sMsg"></div>
+    <div class="dnote"><p>The save prompt decides the folder. To save straight to a machine or network drive, turn on “Ask where to save each file” in your browser’s download settings, then pick that drive when it asks.</p></div>
+  </section>
+
+  <header>
+    <div>
+      <div class="eyebrow" id="eyebrow">Simulation</div>
+      <h1 id="partname">—</h1>
+    </div>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <div class="stage">
+    <canvas id="cv" aria-label="Sheet simulation view. Drag to pan, scroll to zoom."></canvas>
+    <div class="ov" id="cursor">X — Y —</div>
+    <div class="ov" id="banner"></div>
+  </div>
+
+  <div class="bar">
+    <div class="grp">
+      <button class="icon" id="bStart" title="Go to start (Home)">|◀</button>
+      <button class="icon" id="bBack" title="Step back (←)">◀</button>
+      <button class="primary" id="bPlay" title="Play / pause (Space)">Play</button>
+      <button class="icon" id="bFwd" title="Step forward (→)">▶</button>
+      <button class="icon" id="bEnd" title="Go to end (End)">▶|</button>
+    </div>
+    <div class="grp grow"><input type="range" id="scrub" min="0" max="0" value="0" aria-label="Program position"></div>
+    <div class="grp">
+      <span class="lbl">Speed</span>
+      <select id="speed" aria-label="Playback speed">
+        <option value="0">Slow</option><option value="1">Normal</option><option value="2" selected>Fast</option><option value="3">Faster</option><option value="4">Max</option>
+      </select>
+    </div>
+    <div class="grp">
+      <span class="lbl">View</span>
+      <button id="vFit">Whole sheet</button>
+      <button id="vLeft">Left end</button>
+      <button id="vRight">Right end</button>
+      <button class="icon" id="zIn" title="Zoom in">+</button>
+      <button class="icon" id="zOut" title="Zoom out">−</button>
+    </div>
+    <div class="grp">
+      <label class="tg"><input type="checkbox" id="o1" checked> <span id="o1l">Hit outlines</span></label>
+      <label class="tg"><input type="checkbox" id="o2"> <span id="o2l">Travel path</span></label>
+      <label class="tg"><input type="checkbox" id="oFollow"> Follow head</label>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="cols">
+    <section class="card">
+      <h2><span id="sideT" style="font:inherit;color:inherit">Tooling</span> <span id="sideH">click a row to show/hide its hits</span></h2>
+      <div class="tbl"><table><thead id="sideHead"></thead><tbody id="sideBody"></tbody></table></div>
+      <div class="notes" id="notes"></div>
+    </section>
+    <section class="card">
+      <h2>Program <span id="progH">click a block to jump to it</span></h2>
+      <div id="listing"><div id="lsp"></div></div>
+    </section>
+  </div>
+</div>
+
+<script type="text/plain" id="src-punch">
+O0947(110515 - TECH POD TOP HORIZONTAL LH - 2)
+(10/15/2026)
+(UT/T116 ROUND   0.1490   KEYED   0.00)
+(UT/T229 ROUND   0.1720   KEYED   0.00)
+(UT/T236 SQUARE   0.3122   KEYED   INDEX)
+(UT/T104 RECT 0.5000X0.1252   KEYED   90.00)
+(UT/T215 RECT 1.0000X0.2500   KEYED   INDEX)
+(UT/T303 SPC BOWTIE-3.1750 MM   KEYED   0.00)
+(UT/T201 RECT 1.8750X0.2500   KEYED   INDEX)
+(UT/T225 SPC M546 COINING   KEYED   INDEX)
+(UT/T245 RECT 4.0000X0.2500   KEYED   0.00)
+(SHEET DIM: 108.268 17.717)
+(THICKNESS: 0.063)
+(CLAMPS POS:  6.0--49.8713--90.7207)
+(MATERIAL:  GALVANIZED)
+N05 G06 A0.063 B 1
+N10 G92 X98.425 Y50.0
+N15 G90
+N20 (REPOSITION: 9.843)
+N25 G70 X54.134Y8.858
+N30 G27 X9.843
+N35 F1
+N40 M500
+N45 G70 X104.392 Y8.268 T116 (RO 0.149 C500)
+N50 X104.392 Y8.009
+N55 M500
+N60 G70 X99.204 Y8.268 T229 (RO 0.172 C500)
+N65 X99.204 Y4.438
+N70 X98.81 Y4.438
+N75 M500
+N80 G70 X105.798 Y8.268 T236 (SQ 7.93 ANG. 0. C500)
+N85 X105.798 Y7.09 C331.59
+N90 X105.798 Y13.953 C298.41
+N95 M500
+N100 G70 X105.64 Y13.118 T104 (RE 0.5X0.125 ANG. 90. C500)
+N105 X105.64 Y13.118
+N110 X105.64 Y12.988
+N115 G70 X105.015 Y10.586
+N120 X105.015 Y10.586
+N125 X105.015 Y10.456
+N130 G70 X105.64 Y8.054
+N135 X105.64 Y8.054
+N140 X105.64 Y7.924
+N145 M500
+N150 X106.235 Y13.866 C0. T215 (RE 1.X0.25 ANG. 0. C500)
+N155 X106.417 Y13.476 C315.
+N160 X106.182 Y7.331 C45.
+N165 X106.235 Y7.176 C0.
+N170 M500
+N175 X107.136 Y16.73 T303 (SP BOWTIE-3.1750 MM ANG. 0. C500)
+N180 X107.136 Y4.313
+N185 M500
+N190 X107.136 Y15.792 C90. T201 (RE 1.875X0.25 ANG. 0. C500)
+N195 X106.581 Y14.825 C45.
+N200 X106.341 Y14.585
+N205 G70 X106.337 Y8.475
+N210 G79 I4.092 J90.0 P0. Q1.3641 D0.0634 C90.
+N215 X106.341 Y6.457 C135.
+N220 X106.59 Y6.209
+N225 X107.136 Y5.25 C90.
+N230 M546
+N235 X107.126 Y16.166 C0. T225 (SP M546 COINING ANG. 0. C546)
+N240 X107.126 Y15.746
+N245 X106.871 Y15.129 C315.
+N250 X106.545 Y14.803
+N255 X106.219 Y14.477
+N260 X105.893 Y14.151
+N265 X105.893 Y6.891 C45.
+N270 X106.219 Y6.566
+N275 X106.545 Y6.24
+N280 X106.871 Y5.914
+N285 X107.126 Y5.296 C0.
+N290 X107.126 Y4.876
+N295 M500
+N300 G70 X104.811 Y16.73 T245 (RE 4.X0.25 ANG. 0. C500)
+N305 X104.811 Y16.73
+N310 X100.886 Y16.73
+N315 G70 X100.886 Y4.313
+N320 X100.886 Y4.313
+N325 X104.811 Y4.313
+N330 (REPOSITION: -9.843)
+N335 G70 X33.351Y13.134
+N340 G27 X-9.843
+N345 F1
+N350 M500
+N355 G70 X1.911 Y8.268 T116 (RO 0.149 C500)
+N360 X1.911 Y8.009
+N365 X7.94 Y8.009
+N370 X13.968 Y8.009
+N375 X19.996 Y8.009
+N380 X26.024 Y8.009
+N385 X32.053 Y8.009
+N390 X38.081 Y8.009
+N395 X44.109 Y8.009
+N400 X50.137 Y8.009
+N405 X56.166 Y8.009
+N410 X62.194 Y8.009
+N415 X68.222 Y8.009
+N420 X74.25 Y8.009
+N425 X80.279 Y8.009
+N430 X86.307 Y8.009
+N435 X92.335 Y8.009
+N440 X98.363 Y8.009
+N445 M500
+N450 G70 X0.605 Y15.64 T201 (RE 1.875X0.25 ANG. 0. C500)
+N455 G79 I10.237 J-90.0 P0. Q1.7062 D0.0634 C90.
+N460 M546
+N465 G70 X0.615 Y8.268 T225 (SP M546 COINING ANG. 0. C546)
+N470 X0.615 Y4.779 C180.
+N475 X0.615 Y5.326
+N480 X0.615 Y5.873
+N485 X0.615 Y6.42
+N490 X0.615 Y6.967
+N495 X0.615 Y7.513
+N500 X0.615 Y8.06
+N505 X0.615 Y8.607
+N510 X0.615 Y9.154
+N515 X0.615 Y9.701
+N520 X0.615 Y10.248
+N525 X0.615 Y10.795
+N530 X0.615 Y11.342
+N535 X0.615 Y11.888
+N540 X0.615 Y12.435
+N545 X0.615 Y12.982
+N550 X0.615 Y13.529
+N555 X0.615 Y14.076
+N560 X0.615 Y14.623
+N565 X0.615 Y15.17
+N570 X0.615 Y15.716
+N575 X0.615 Y16.263
+N580 M500
+N585 G70 X96.961 Y16.73 T245 (RE 4.X0.25 ANG. 0. C500)
+N590 G79 I94.203 J180.0 P0. Q3.9251 D0.0634
+N595 G70 X2.758 Y4.313
+N600 G79 I94.203 J0.0 P0. Q3.9251 D0.0634
+N605 M692
+N610 M13
+N615 G50
+%
+</script>
+
+<script type="text/plain" id="src-dxf">
+0
+SECTION
+2
+HEADER
+9
+$INSUNITS
+70
+1
+0
+ENDSEC
+0
+SECTION
+2
+ENTITIES
+0
+LWPOLYLINE
+8
+CUT
+90
+8
+70
+1
+10
+0.375
+20
+0
+10
+11.625
+20
+0
+42
+0.41421356237309503
+10
+12
+20
+0.375
+10
+12
+20
+5.625
+42
+0.41421356237309503
+10
+11.625
+20
+6
+10
+0.375
+20
+6
+42
+0.41421356237309503
+10
+0
+20
+5.625
+10
+0
+20
+0.375
+42
+0.41421356237309503
+0
+CIRCLE
+8
+CUT
+10
+1
+20
+1
+40
+0.0745
+0
+CIRCLE
+8
+CUT
+10
+11
+20
+1
+40
+0.0745
+0
+CIRCLE
+8
+CUT
+10
+1
+20
+5
+40
+0.0745
+0
+CIRCLE
+8
+CUT
+10
+11
+20
+5
+40
+0.0745
+0
+CIRCLE
+8
+CUT
+10
+6
+20
+5.2
+40
+0.086
+0
+CIRCLE
+8
+CUT
+10
+3
+20
+2.2
+40
+0.375
+0
+LWPOLYLINE
+8
+CUT
+90
+4
+70
+1
+10
+5.0625
+20
+1.075
+10
+6.9375
+20
+1.075
+10
+6.9375
+20
+1.325
+10
+5.0625
+20
+1.325
+0
+LWPOLYLINE
+8
+CUT
+90
+4
+70
+1
+10
+8.8439
+20
+2.3439
+10
+9.1561
+20
+2.3439
+10
+9.1561
+20
+2.6561
+10
+8.8439
+20
+2.6561
+0
+LWPOLYLINE
+8
+CUT
+90
+4
+70
+1
+10
+5
+20
+2.8125
+10
+7
+20
+2.8125
+42
+1
+10
+7
+20
+3.1875
+10
+5
+20
+3.1875
+42
+1
+0
+LWPOLYLINE
+8
+CUT
+90
+4
+70
+1
+10
+8
+20
+3.8
+10
+10.5
+20
+3.8
+10
+10.5
+20
+5.0
+10
+8
+20
+5.0
+0
+LINE
+8
+CUT
+10
+1.8
+20
+4.2
+11
+3.2
+21
+4.2
+0
+ARC
+8
+CUT
+10
+3.2
+20
+4.7
+40
+0.5
+50
+-90
+51
+90
+0
+LINE
+8
+CUT
+10
+3.2
+20
+5.2
+11
+1.8
+21
+5.2
+0
+LINE
+8
+CUT
+10
+1.8
+20
+5.2
+11
+1.8
+21
+4.2
+0
+LINE
+8
+BEND
+10
+0
+20
+3.6
+11
+12
+21
+3.6
+0
+TEXT
+8
+TEXT
+10
+1
+20
+0.3
+40
+0.2
+1
+SAMPLE BRACKET
+0
+ENDSEC
+0
+EOF
+</script>
+
+<script type="text/plain" id="src-laser">
+%
+O1001(SAMPLE LASER BRACKET)
+(SHEET DIM: 8.000 6.000)
+(THICKNESS: 0.125)
+(MATERIAL: MILD STEEL)
+N10 G20 G90
+N20 G92 X0 Y0
+(HOLE 1 - 0.500 DIA)
+N30 G00 X2.0 Y3.0
+N40 G01 X2.25 Y3.0 F80
+N50 G03 X2.25 Y3.0 I-0.25 J0
+(HOLE 2 - 0.500 DIA, SUBPROGRAM)
+N60 G00 X6.0 Y3.0
+N70 M98 P2000
+(SLOT 1.500 X 0.375)
+N80 G00 X4.0 Y1.6
+N90 G01 X4.0 Y1.7875 F90
+N100 X3.4375
+N110 G03 X3.4375 Y1.4125 I0 J-0.1875
+N120 G01 X4.5625
+N130 G03 X4.5625 Y1.7875 I0 J0.1875
+N140 G01 X4.0
+(VENT - R-FORMAT ARCS)
+N150 G00 X3.25 Y4.25
+N160 G01 X3.5 Y4.25 F90
+N170 G01 X4.5
+N180 G03 X4.5 Y4.75 R0.25
+N190 G01 X3.5
+N200 G03 X3.5 Y4.25 R0.25
+(OUTSIDE PROFILE 7.0 X 5.0 R0.5)
+N210 G00 X0.25 Y2.5
+N220 G01 X0.5 Y2.5 F150
+N230 Y5.0
+N240 G02 X1.0 Y5.5 I0.5 J0
+N250 G01 X7.0
+N260 G02 X7.5 Y5.0 I0 J-0.5
+N270 G01 Y1.0
+N280 G02 X7.0 Y0.5 I-0.5 J0
+N290 G01 X1.0
+N300 G02 X0.5 Y1.0 I0 J0.5
+N310 G01 Y2.5
+N320 G00 X0 Y0
+N330 M30
+O2000(0.500 HOLE FROM CENTRE)
+G91 G01 X0.25 F80
+G03 I-0.25 J0
+G90
+M99
+%
+</script>
+<script src="js/ncsim-app.js"></script>
+<script src="js/common.js"></script>
+<script src="js/config.js"></script>
+<script src="js/link.js"></script>
+<script src="js/tool-page.js"></script>
+<script src="js/tool-ncsim.js"></script>
+<script>
+/* folder check: this page needs css/ and js/ next to it. If they did not load (page opened on its own, or straight from inside the zip), say so instead of showing a broken screen. */
+addEventListener('load', function () {
+  var cssOk = !!getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  var jsOk = typeof CONFIG !== 'undefined';
+  if (cssOk && jsOk) return;
+  var miss = [cssOk ? '' : 'css/ncdrive.css', jsOk ? '' : 'js/ files'].filter(Boolean).join(' and ');
+  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Segoe UI,system-ui,sans-serif;overflow:auto';
+  document.body.innerHTML = '<div style="max-width:620px;padding:28px 32px;border:1px solid #22d3ee;box-shadow:0 0 24px rgba(34,211,238,.3);background:#07121d">'
+    + '<h1 style="margin:0 0 10px;font-size:22px;letter-spacing:.12em">NC <span style="color:#ff8a3d">DRIVE</span></h1>'
+    + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'
+    + '<p style="margin:0 0 6px">NC Drive is a folder of files that work together. To open it:</p>'
+    + '<ol style="margin:0 0 10px;padding-left:22px"><li>Right-click <b>nc-drive-project.zip</b> and choose <b>Extract All</b> (opening the page from inside the zip does not work).</li>'
+    + '<li>Open the extracted <b>nc-drive</b> folder and double-click <b>index.html</b> (Edge or Chrome).</li></ol>'
+    + '<p style="margin:0;color:#6d91a6;font-size:13px">Keep index.html, the tool pages and the css and js folders together in that folder.</p></div>';
+});
+</script>
+</body>
+</html>

@@ -534,3 +534,4 @@
   .wall.h { background: linear-gradient(transparent 3px, var(--gap-line) 3px, var(--gap-line) 5px, transparent 5px); }
   .wall:hover, .wall.active, .wall:focus-visible { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
   .tool.page { border: var(--box-line-width) solid var(--box-line); }
+.nowrap { white-space: nowrap; }

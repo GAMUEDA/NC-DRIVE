@@ -30,9 +30,10 @@
      js/p12-dxfnc.js      P12 one .dxf → one .nc (no nesting)             dxfToNc()
      js/p13-turret.js     P13 turret strip DXF → AMADA programs -1…-4    turretPart(), turretPrograms()
      js/p14-turret-pdf.js P14 the program sheet PDF for each turret .nc  turretReportPdf()   (falk-logo.js = its logo)
+     js/ncsim-app.js      NC Path Simulator v7 (nc_sim.html, css/ncsim.css): plays a punch / turret or laser .nc   NCSim.open()
      js/ui-core.js, ui-job.js, ui-progress.js, ui-status.js, main-tools.js, start.js   main page screen
      (ui-status.js = STATUS box: add to the current nest, zones, parts folder, laser rules, settings lock)
-     js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js / tool-dxfnc.js   tool page screens
+     js/tool-page.js + tool-search.js / tool-partslist.js / tool-copy.js / tool-usb.js / tool-dxfnc.js / tool-ncsim.js   tool page screens
 
    P1–P11 never touch the screen: they take values and return results, so each one can be changed or
    tested on its own. Console (F12): NCDrive.process on the main page, NCDriveTool.process on a tool page,

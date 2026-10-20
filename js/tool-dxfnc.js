@@ -33,7 +33,7 @@ function renderDx() {
         const n = r.nc, sel = i === dx.sel ? 'sel' : '';
         if (!n) return `<tr data-i="${i}"><td class="mono">${i + 1}</td><td colspan="4" class="wait">${r.working ? 'converting…' : 'press RUN CONVERSION'}</td></tr>`;
         if (n.error) return `<tr data-i="${i}" class="${sel}"><td class="mono">${i + 1}</td><td colspan="4" class="bad">${esc(n.error)}</td></tr>`;
-        return n.files.map((f, k) => `<tr data-i="${i}" data-f="${k}" class="${sel}"><td class="mono">${k ? '' : i + 1}</td><td class="nm" title="${esc(f.name)}"><span class="ext ${f.kind}">${f.kind.toUpperCase()}</span> ${esc(f.name)}</td><td class="muted">${f.info}</td><td class="mono">${kb(fileSize(f.data))}</td><td><button class="ghost mini dlNc" title="Download this file">⬇</button></td></tr>`).join('');
+        return n.files.map((f, k) => `<tr data-i="${i}" data-f="${k}" class="${sel}"><td class="mono">${k ? '' : i + 1}</td><td class="nm" title="${esc(f.name)}"><span class="ext ${f.kind}">${f.kind.toUpperCase()}</span> ${esc(f.name)}</td><td class="muted">${f.info}</td><td class="mono">${kb(fileSize(f.data))}</td><td class="nowrap">${f.kind === 'nc' ? '<button class="ghost mini simNc" title="Play this program in the NC Part Simulator">▶</button> ' : ''}<button class="ghost mini dlNc" title="Download this file">⬇</button></td></tr>`).join('');
       }).join('')
     : '<tr><td colspan="5" class="muted">The .nc (and .pdf) files appear here.</td></tr>');
   updDxButtons();
@@ -184,6 +184,15 @@ function clearDx(openPicker) {
   log('lists cleared');
   if (openPicker) $('#dxFile').click();
 }
+// ▶ hands the .nc to the NC Part Simulator (nc_sim.html), opening it when it isn't open
+function simulateNc(i, k) {
+  const n = dx.rows[i] && dx.rows[i].nc, f = n && !n.error && n.files[k || 0];
+  if (!f || f.kind !== 'nc') return;
+  ls.set('simFile', JSON.stringify({ name: f.name, text: typeof f.data === 'string' ? f.data : new TextDecoder().decode(f.data), t: Date.now() }));
+  openNamed('nc_sim.html', 'ncdrive-ncsim');
+  NCLink.notify('sim-file');
+  log(`${f.name} → NC Part Simulator`, 'ok');
+}
 function downloadNc(i, k) {
   const n = dx.rows[i] && dx.rows[i].nc, f = n && !n.error && n.files[k || 0];
   if (!f) return;
@@ -271,6 +280,7 @@ function startDxfNcPage() {
     if (!tr) return;
     dx.sel = +tr.dataset.i;
     if (e.target.closest('.dlNc')) downloadNc(dx.sel, +(tr.dataset.f || 0));
+    if (e.target.closest('.simNc')) simulateNc(dx.sel, +(tr.dataset.f || 0));
     renderDx();
   };
   $('#dxTable').addEventListener('click', onRow);

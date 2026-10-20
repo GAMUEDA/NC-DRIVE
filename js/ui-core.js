@@ -153,6 +153,7 @@ const HELP = [
   'search [numbers]          NC Search  ·  usb  Erase / Clear USB  ·  plist  PartsList from PDF',
   'copy                      Copy Parts to Drive (NC, PDF… or the DXF when a type is missing)',
   'dxfnc                     DXF to NC: one .nc per .dxf, saved to a USB drive or a folder',
+  'ncsim                     NC Part Simulator: play a punch / turret or laser .nc program hit by hit',
 ];
 // Parts whose name is q, else starts with / contains q; '*' or 'all' = every part.
 function findParts(q) {
@@ -225,6 +226,7 @@ const COMMANDS = {
   plist: () => openTool('plist'),
   copy: () => openTool('copy'),
   dxfnc: () => openTool('dxfnc'),
+  ncsim: () => openTool('ncsim'),
   theme: rest => { document.documentElement.dataset.theme = rest[0] === 'dark' ? 'dark' : rest[0] === 'light' ? 'light' : ''; },
 };
 COMMANDS['?'] = COMMANDS.help;
