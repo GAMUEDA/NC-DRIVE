@@ -126,6 +126,7 @@ function renderParts() {
           <div class="pd mono ${fits ? '' : 'warn'}">${p.w.toFixed(1)} × ${p.h.toFixed(1)}${fits ? '' : ' — larger than the sheet'}${notes ? ' · ' + notes : ''}</div></div>
         <div class="ctl"><input class="num qIn" type="number" min="0" value="${p.qty}" title="Quantity" aria-label="Quantity"><button class="x" title="Remove" aria-label="Remove">✕</button></div>
         <div class="row2"><label>Gauge</label><input class="txt gIn" value="${esc(p.thick)}" placeholder="e.g. 14ga Satincoat" title="${esc(p._thickRaw ? 'From the drawing: ' + p._thickRaw : '')}">${p._fromPdf ? '<span class="tag">PDF</span>' : ''}</div>
+        <label class="row2 turnRow${p.turn90 ? ' on' : ''}" title="This part always sits 90° (or 270°) from how it is drawn, whichever way the rest of the job runs"><input type="checkbox" class="turnChk"${p.turn90 ? ' checked' : ''}> Turn this part 90° from its drawing${p.turn90 ? ' · <b>on</b>' : ''}</label>
       </li>`;
     })
     .join('');
@@ -137,6 +138,7 @@ function wirePartsPanel() {
     const p = S.parts.find(x => x.id === li.dataset.id);
     if (!p) return;
     if (e.target.classList.contains('qIn')) p.qty = Math.max(0, parseInt(e.target.value, 10) || 0);
+    if (e.target.classList.contains('turnChk')) p.turn90 = e.target.checked;
     if (e.target.classList.contains('gIn')) { const raw = e.target.value.trim(), n = normalizeMaterial(raw); p.thick = n.label || raw; p._thickRaw = raw !== p.thick ? raw : ''; p._fromPdf = false; }
     markStale();
     renderParts();

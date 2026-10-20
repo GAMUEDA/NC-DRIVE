@@ -81,6 +81,7 @@ const CONFIG = {
     defaultSheet: { w: 1219.2, h: 3048 }, // on this sheet, a gauge whose parts don't fit ...
     longSheet: { w: 1219.2, h: 4267.2 }, // ... is redone on this one (4' × 14'). null = never
     progressMs: 60, // how often the screen is updated while nesting
+    fillRight: true, // nest_admin 8: the sheet's zero is the bottom-RIGHT corner, so parts fill from there (false = bottom-left)
   },
 
   // ---- P6 NC output (Bodor dialect) ----

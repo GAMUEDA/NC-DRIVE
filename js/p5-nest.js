@@ -8,7 +8,10 @@
    Each part is rasterised at cell size c (gap/3, 1.5–6 mm); holes stay open so small parts can sit inside them,
    and the outline is grown by the gap. Placement and overlap tests are bit operations on packed rows.
    GRAIN: parts only sit at 0°/180°, or (the whole nest turned a quarter) at 90°/270° — never a mix. Both are tried
-   and the shorter layout wins. Parts are never mirrored.
+   and the shorter layout wins, unless settings.orient forces 'v' (long side down the sheet) or 'h' (across it).
+   Parts are never mirrored. A part ticked "Turn 90°" (p.turn90) always sits a quarter-turn from its own drawing.
+   ZERO CORNER (nest_admin 8): the sheet's zero is the bottom-RIGHT corner, so parts fill from there: bottom row
+   first, right to left (CONFIG.nest.fillRight; false = the old bottom-left fill).
    SECTION CUTS (settings.sections): long sheets are nested as 4' slots, one slot's layout repeated while parts remain,
    so the sheet can be cut into handleable pieces; used whenever every part fits a slot. The lines are drawn, not cut.
    LONG SHEET: on the default 4' × 10', a gauge with parts that don't fit is redone on a 4' × 14' sheet.
@@ -136,9 +139,10 @@ function stampPart(S, R, ax, ay) {
   }
 }
 
-// Lowest (then leftmost) free spot for R on S, slid down/left as far as it goes. → {x, y} in cells, or null.
+// Lowest (then rightmost, or leftmost when CONFIG.nest.fillRight is off) free spot for R on S, slid down and towards
+// the zero corner as far as it goes. → {x, y} in cells, or null.
 function findPos(S, R, step, band) {
-  const maxX = S.Wc - R.bw, maxY = S.Hc - R.bh;
+  const maxX = S.Wc - R.bw, maxY = S.Hc - R.bh, right = CONFIG.nest.fillRight;
   if (maxX < 0 || maxY < 0) return null;
   const lbMap = S._lb || (S._lb = new Map()), lb = lbMap.get(R) || 0;
   // Free space only shrinks, so every row below where a column's last search stopped is still blocked for this shape:
@@ -152,25 +156,30 @@ function findPos(S, R, step, band) {
     if (y > col[x0]) col[x0] = y;
     return y <= maxY && y < cap ? y : null;
   };
+  // columns in search order: from the zero corner's side across the sheet (the far edge always included)
+  const cols = [];
+  for (let x0 = 0; x0 <= maxX; x0 += step) cols.push(right ? maxX - x0 : x0);
+  const far = right ? 0 : maxX;
   let best = null;
-  for (let x0 = 0; x0 <= maxX; x0 += step) {
+  for (const x0 of cols) {
     const y = lowestAt(x0, best ? best.y + 1 : Infinity);
     if (y === null) continue;
     if (!best || y < best.y) best = { x: x0, y };
     if (best.y <= lb) break;
   }
-  if (maxX % step !== 0) { const y = lowestAt(maxX, best ? best.y : Infinity); if (y !== null && (!best || y < best.y)) best = { x: maxX, y }; }
+  if (maxX % step !== 0) { const y = lowestAt(far, best ? best.y : Infinity); if (y !== null && (!best || y < best.y)) best = { x: far, y }; }
   if (!best) { lbMap.set(R, maxY + 1); return null; }
   const minY = best.y;
   if (band > 0) {
     const lim = minY + band;
-    for (let x0 = 0; x0 <= maxX; x0 += step) { const y = lowestAt(x0, lim + 1); if (y !== null && y <= lim) { best = { x: x0, y }; break; } }
+    for (const x0 of cols) { const y = lowestAt(x0, lim + 1); if (y !== null && y <= lim) { best = { x: x0, y }; break; } }
   }
   let { x, y } = best, moved = true;
+  const dx = right ? 1 : -1, canX = x => (right ? x < maxX : x > 0);
   while (moved) {
     moved = false;
     while (y > 0 && !collides(S, R, x, y - 1)) { y--; moved = true; }
-    while (x > 0 && !collides(S, R, x - 1, y)) { x--; moved = true; }
+    while (canX(x) && !collides(S, R, x + dx, y)) { x += dx; moved = true; }
   }
   lbMap.set(R, Math.min(minY, y));
   return { x, y };
@@ -184,7 +193,9 @@ function nestGrid(mat, gap, margin, off, sect) {
   const N = CONFIG.nest;
   const c = Math.min(N.cellMax, Math.max(N.cellMin, gap / N.cellPerGap)), k = Math.max(1, Math.ceil(gap / c)), P = k + 1;
   const cache = new Map();
-  const getR = (p, a) => { let m = cache.get(p); if (!m) { m = {}; cache.set(p, m); } return m[a] || (m[a] = rasterizePart(p, a, c, k)); };
+  // a part ticked "Turn 90°" sits a quarter-turn from its own drawing whichever way the job runs (0/180 → 90/270)
+  const turned = (p, a) => (p.turn90 ? ((((a - (off || 0)) % 360) + 360) % 360 + 90) % 360 : a);
+  const getR = (p, a) => { let m = cache.get(p); if (!m) { m = {}; cache.set(p, m); } return m[a] || (m[a] = rasterizePart(p, turned(p, a), c, k)); };
   return { c, k, P, margin, gap, off: off || 0, sect: sect || 0, Wc: Math.floor(mat.w / c), Hc: Math.floor(mat.h / c), mc: Math.ceil(margin / c), getR };
 }
 const gridSheet = G => newSheet(G.Wc, G.Hc, G.P, G.mc, { mm: G.sect, c: G.c, k: G.k });
@@ -200,17 +211,18 @@ function pieceList(adds, G) {
   return inst.sort((a, b) => b._ar - a._ar);
 }
 
-// Place the pieces on the sheets: each goes to the lowest-then-leftmost spot on the first sheet it fits (0°/180° in the
+// Place the pieces on the sheets: each goes to the lowest-then-nearest-the-zero-corner spot on the first sheet it fits (0°/180° in the
 // grain direction only), new sheets as needed. Pieces that fit nowhere go in skipped (Map part → count).
 // added = flag the new items (Add to nest).
 async function placePieces(G, inst, sheets, skipped, opts, added) {
   const N = CONFIG.nest, getR = G.getR, tol = N.tieTol, angs = [G.off, (G.off + 180) % 360];
+  const xBetter = (a, b) => (N.fillRight ? a > b + tol : a < b - tol);
   const pick = S => {
     let best = null;
     for (const a of angs) {
       const R = getR(S._p, a), pos = findPos(S, R, 1, Math.round(N.bandFrac * R.bh));
       if (!pos) continue;
-      if (!best || pos.y < best.y - tol || (Math.abs(pos.y - best.y) <= tol && pos.x < best.x - tol)) best = { x: pos.x, y: pos.y, R };
+      if (!best || pos.y < best.y - tol || (Math.abs(pos.y - best.y) <= tol && xBetter(pos.x, best.x))) best = { x: pos.x, y: pos.y, R };
     }
     return best;
   };
@@ -302,13 +314,23 @@ async function nestSections(adds, mat, gap, margin, off, secMM, opts) {
 }
 
 // Nest one gauge group: both grain directions, sectioned and plain; a sectioned layout that fits everything always wins,
-// otherwise the shortest. list: parts with .qty. mat: {w,h} mm. opts: {skeleton, sections (mm, 0 = off), onProgress(n, total)}.
+// otherwise the shortest. list: parts with .qty. mat: {w,h} mm.
+// opts: {skeleton, sections (mm, 0 = off), orient ('auto' | 'v' | 'h'), onProgress(n, total)}.
 async function nestGroup(list, mat, gap, margin, opts) {
   opts = opts || {};
   const adds = list.filter(p => p.qty > 0).map(p => ({ p, n: p.qty })), secMM = opts.sections && mat.h > opts.sections + margin + 5 ? opts.sections : 0;
-  const ext = (p, off) => (off ? p.w : p.h); // the part's length along the sheet in this grain direction
+  const ext = (p, off) => (p.turn90 || off ? p.w : p.h); // the part's length along the sheet in this grain direction
+  // Part direction: 'v' = long sides run down the sheet, 'h' = across it — one direction for the whole job (grain stays
+  // one way), decided by how most of the material (area × qty, turned parts left out) is drawn.
+  const orient = opts.orient || 'auto';
+  let offs = [0, 90];
+  if (orient === 'v' || orient === 'h') {
+    let tall = 0, wide = 0;
+    for (const { p, n } of adds) { if (p.turn90) continue; const a = p.w * p.h * n; if (p.h >= p.w) tall += a; else wide += a; }
+    offs = [(orient === 'v') === tall >= wide ? 0 : 90];
+  }
   const tries = [];
-  for (const off of [0, 90]) for (const sec of secMM ? [secMM, 0] : [0]) tries.push({ off, sec });
+  for (const off of offs) for (const sec of secMM ? [secMM, 0] : [0]) tries.push({ off, sec });
   const secOK = {};
   let best = null;
   for (const t of tries) {
@@ -320,7 +342,7 @@ async function nestGroup(list, mat, gap, margin, opts) {
     if (t.sec && r.skipped.size) continue; // sections didn't work out for this job — the plain run covers it
     if (!best || (!!r.sectMM > !!best.sectMM) || (!!r.sectMM === !!best.sectMM && r.len_ < best.len_ - 0.5)) best = r;
   }
-  best.strategy = [best.sectMM ? "section cuts every 4'" : '', best.grain ? 'grain across the sheet (90°/270°)' : 'grain along the sheet (0°/180°)'].filter(Boolean).join(' · ');
+  best.strategy = [best.sectMM ? "section cuts every 4'" : '', best.grain ? 'grain across the sheet (90°/270°)' : 'grain along the sheet (0°/180°)', orient === 'v' ? 'forced vertical' : orient === 'h' ? 'forced horizontal' : ''].filter(Boolean).join(' · ');
   return best;
 }
 
@@ -354,9 +376,9 @@ function groupByGauge(parts) {
 }
 
 // One gauge with the settings: nestGroup, and — on the default 4' × 10' — a retry on a 4' × 14' sheet when parts don't fit.
-// settings: {mat:{w,h}, gap, margin, skeleton, sections}
+// settings: {mat:{w,h}, gap, margin, skeleton, sections, orient}
 async function nestGauge(list, settings, onProgress) {
-  const N = CONFIG.nest, o = { skeleton: settings.skeleton, sections: settings.sections ? N.sectionMM : 0, onProgress };
+  const N = CONFIG.nest, o = { skeleton: settings.skeleton, sections: settings.sections ? N.sectionMM : 0, orient: settings.orient, onProgress };
   let r = await nestGroup(list, settings.mat, settings.gap, settings.margin, o);
   const d = N.defaultSheet, L = N.longSheet;
   if (L && r.skipped.size && Math.abs(settings.mat.w - d.w) < 1 && Math.abs(settings.mat.h - d.h) < 1) {
