@@ -34,6 +34,7 @@ function nestSettingsFromPanel() {
     margin: Math.max(0, parseFloat($('#marginIn').value) || 0),
     skeleton: $('#skelChk').checked,
     sections: $('#sectChk').checked,
+    orient: $('#orientSel').value,
   };
 }
 // The job as the report (P7) sees it.
@@ -153,6 +154,7 @@ const HELP = [
   'search [numbers]          NC Search  ·  usb  Erase / Clear USB  ·  plist  PartsList from PDF',
   'copy                      Copy Parts to Drive (NC, PDF… or the DXF when a type is missing)',
   'dxfnc                     DXF to NC: one .nc per .dxf, saved to a USB drive or a folder',
+  'ncsim                     NC Part Simulator: play a punch / turret or laser .nc program hit by hit',
 ];
 // Parts whose name is q, else starts with / contains q; '*' or 'all' = every part.
 function findParts(q) {
@@ -225,6 +227,7 @@ const COMMANDS = {
   plist: () => openTool('plist'),
   copy: () => openTool('copy'),
   dxfnc: () => openTool('dxfnc'),
+  ncsim: () => openTool('ncsim'),
   theme: rest => { document.documentElement.dataset.theme = rest[0] === 'dark' ? 'dark' : rest[0] === 'light' ? 'light' : ''; },
 };
 COMMANDS['?'] = COMMANDS.help;
@@ -268,7 +271,7 @@ function markStale() { if (S.groups.length) { S.stale = true; renderSheets(); } 
 function wireSettings() {
   document.querySelectorAll('#bedSeg button').forEach(b => (b.onclick = () => setBed(+b.dataset.b)));
   ['sheetW', 'sheetH'].forEach(id => $('#' + id).addEventListener('input', () => { S.sheetCustom = true; updateBedNote(); markStale(); }));
-  ['gapIn', 'marginIn', 'skelChk', 'sectChk'].forEach(id => $('#' + id).addEventListener('change', markStale));
+  ['gapIn', 'marginIn', 'skelChk', 'sectChk', 'orientSel'].forEach(id => $('#' + id).addEventListener('change', markStale));
   // a clean-up option changed: re-clean every part (P3)
   ['cleanChk', 'bendChk', 'etchChk', 'featChk'].forEach(id => $('#' + id).addEventListener('change', () => { S.parts.forEach(p => cleanPart(p, cleanOpts())); markStale(); renderParts(); }));
   $('#jobIn').addEventListener('input', () => { if (S.view === 'report') renderView(); announceChange(); });

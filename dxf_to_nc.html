@@ -13,6 +13,12 @@
   <div class="dh"><a class="brandLink" href="index.html" onclick="openMain();return false;" title="NC Drive main page">NC <span>DRIVE</span></a><h3 id="dlgDxfncT">⚙ DXF to NC</h3><span class="linkState" id="linkState"></span><button class="ghost mini" id="openMain" title="Open (or go back to) index.html">Open NC Drive</button></div>
   <div class="db">
     <div class="row dxOpts">
+      <div class="dxPartBox">
+        <label class="lb" for="dxPart">Part number to process</label>
+        <div class="row"><input class="txt mono" id="dxPart" placeholder="e.g. 14443_10073" autocomplete="off" title="Type the part number, then Find DXF (or press RUN CONVERSION). The DXF is taken from the list below, else from the linked parts folders."><button class="ghost mini" id="dxFind">Find DXF</button><button class="ghost mini" id="dxLink" title="Link the folder where the part files are (shared with NC Search)">Link parts folder…</button></div>
+        <div class="note" id="dxLib"></div>
+        <div class="row dxTur"><label for="dxProgNo">Turret: first program no.</label><input class="txt mono" id="dxProgNo" inputmode="numeric" style="flex:0 0 64px;" value="964" title="O-number of the first turret program; each program after it counts up by one"></div>
+      </div>
       <div class="drop dxDrop" id="dxDrop" tabindex="0" role="button">Drop .dxf files here, or click to browse</div>
       <input type="file" id="dxFile" accept=".dxf" multiple hidden>
       <span class="optGroup" aria-label="DXF clean-up">
@@ -25,14 +31,14 @@
     </div>
     <div class="dxView">
       <section class="dxPane"><div class="dxHead"><b>DXF files</b><span class="muted mono" id="dxCount"></span></div><div class="tblWrap"><table class="tbl" id="dxTable"></table></div></section>
-      <section class="dxPane"><div class="dxHead"><b>NC files</b><span class="muted mono" id="ncCount"></span></div><div class="tblWrap"><table class="tbl" id="ncTable"></table></div></section>
+      <section class="dxPane"><div class="dxHead"><b>NC / PDF files</b><span class="muted mono" id="ncCount"></span></div><div class="tblWrap"><table class="tbl" id="ncTable"></table></div></section>
     </div>
-    <div class="note">Converted with nest_admin 5's program and its default conditions: stray geometry, bend lines and feature outlines removed, etched text found and marked, and parts on the never-programmed (OMIT) list refused. Drop the DXF files, then press <b>CONVERT</b>. Each DXF becomes its own .nc with the same name, zeroed at the part's lower-left corner (G92), metric, incremental, holes before the outer profile, etching as M11/M09. Feed and power are set on the machine. ⬇ on a row downloads that one file.</div>
+    <div class="note">Turret parts (14443 …): each DXF makes four AMADA programs, <b>- 1</b> one part, <b>- 2</b> two, <b>- 3</b> three and <b>- 4</b> a full 48" sheet, each with its .nc and its .pdf program sheet. Other parts are converted with nest_admin 5's program and its default conditions: stray geometry, bend lines and feature outlines removed, etched text found and marked, and parts on the never-programmed (OMIT) list refused. Type a part number or drop the DXF files, then press <b>RUN CONVERSION</b>. Each DXF becomes its own .nc with the same name, zeroed at the part's lower-left corner (G92), metric, incremental, holes before the outer profile, etching as M11/M09. Feed and power are set on the machine. ⬇ on a row downloads that one file.</div>
   </div>
   <div class="df dxFoot">
-    <div class="dxOpt dxConvert"><button class="convertBtn" id="dxConvert" disabled title="Turns every DXF in the left list into its .nc (Ctrl+Enter)">CONVERT</button></div>
-    <div class="dxOpt"><button id="dxUsb" disabled title="Writes every .nc onto the USB drive">1 · Save NC to USB drive</button><span class="mono dxTarget" id="dxUsbName"></span><button class="ghost mini" id="dxUsbPick" title="Choose the USB drive (or a folder on it)">Change…</button></div>
-    <div class="dxOpt"><button id="dxFolder" disabled title="Copies every .nc into a folder">2 · Copy NC to a folder</button><span class="mono dxTarget" id="dxFolderName"></span><button class="ghost mini" id="dxFolderPick" title="Choose the folder">Change…</button></div>
+    <div class="dxOpt dxConvert"><button class="convertBtn" id="dxConvert" title="Finds the part number typed above (if any), then turns every DXF in the left list into its .nc and .pdf files (Ctrl+Enter)">RUN CONVERSION</button></div>
+    <div class="dxOpt"><button id="dxUsb" disabled title="Writes every .nc and .pdf onto the USB drive">1 · Save ALL to USB drive</button><span class="mono dxTarget" id="dxUsbName"></span><button class="ghost mini" id="dxUsbPick" title="Choose the USB drive (or a folder on it)">Change…</button></div>
+    <div class="dxOpt"><button id="dxFolder" disabled title="Copies every .nc and .pdf into a folder">2 · Copy ALL to a folder</button><span class="mono dxTarget" id="dxFolderName"></span><button class="ghost mini" id="dxFolderPick" title="Choose the folder">Change…</button></div>
     <div class="dxOpt"><button class="ghost" id="dxNew" title="Empties both lists and opens the file picker">3 · Clear and input new DXF</button></div>
     <span class="grow" id="dxStatus"></span>
   </div>
@@ -50,7 +56,11 @@
 <script src="js/p3-clean.js"></script>
 <script src="js/p4-pdf.js"></script>
 <script src="js/p6-nc.js"></script>
+<script src="js/p8-search.js"></script>
 <script src="js/p12-dxfnc.js"></script>
+<script src="js/p13-turret.js"></script>
+<script src="js/falk-logo.js"></script>
+<script src="js/p14-turret-pdf.js"></script>
 <script src="js/tool-page.js"></script>
 <script src="js/tool-dxfnc.js"></script>
 <script>

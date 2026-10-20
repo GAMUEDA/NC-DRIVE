@@ -12,7 +12,7 @@ Open `index.html` (online: https://gamueda.github.io/NC-DRIVE/ once GitHub Pages
 | `parts_list.html` | P9 parts list from PDF |
 | `copy_to_drive.html` | P10 copy parts to drive |
 | `erase_usb.html` | P11 erase / write USB |
-| `dxf_to_nc.html` | P12 DXF to NC: nest_admin 5's conversion with its defaults (all clean-ups on, OMIT list refused); drop DXF files, press CONVERT, then save the .nc files to a USB drive or a folder |
+| `dxf_to_nc.html` | P12–P14 DXF to NC: type a part number or drop DXFs, press RUN CONVERSION. Turret parts (14443 …) get four AMADA programs (- 1, - 2, - 3 parts, - 4 a full 48" sheet), each .nc + .pdf; other parts get nest_admin 5's laser conversion with its defaults (all clean-ups on, OMIT list refused). Save ALL to a USB drive (Change… picks the drive) or a folder |
 
 Shared code is in `js/` (start with `js/config.js`, which holds every setting and a map of the processes) and the look is in `css/ncdrive.css`.
 

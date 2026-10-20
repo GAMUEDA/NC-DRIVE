@@ -100,6 +100,9 @@
   .field label { color: var(--muted); }
   .field input.num { width: 76px; }
   .field input.txt { max-width: 130px; text-align: right; }
+  select.sel { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 4px; padding: 3px 4px; font: 12px "Share Tech Mono", monospace; max-width: 170px; }
+  .part .turnRow { font-size: 11px; color: var(--muted); cursor: pointer; }
+  .part .turnRow.on { color: var(--accent2); }
   .chk { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--muted); margin-bottom: 5px; cursor: pointer; }
   .chk input { margin-top: 2px; }
   .hint { font-size: 11px; color: var(--muted); line-height: 1.45; }
@@ -460,6 +463,11 @@
   .dxDrop { flex: 1 1 260px; padding: 14px; }
   .dxOpts .optGroup { display: flex; flex-wrap: wrap; gap: 4px 14px; }
   .dxOpts .chk { margin: 0; }
+  .dxPartBox { flex: 0 1 380px; display: flex; flex-direction: column; gap: 4px; }
+  .dxPartBox .lb { font-size: 12px; font-weight: 600; }
+  .dxPartBox .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .dxPartBox #dxPart { flex: 1 1 150px; font-size: 14px; }
+  .dxTur { font-size: 11px; color: var(--muted); }
   .dxView { flex: 1 1 auto; min-height: 240px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
   .dxPane { display: flex; flex-direction: column; min-height: 0; border: 1px solid rgba(34,211,238,.35); background: rgba(3,10,18,.55); }
   .dxHead { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(34,211,238,.25); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
@@ -529,6 +537,7 @@
   .wall.h { background: linear-gradient(transparent 3px, var(--gap-line) 3px, var(--gap-line) 5px, transparent 5px); }
   .wall:hover, .wall.active, .wall:focus-visible { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
   .tool.page { border: var(--box-line-width) solid var(--box-line); }
+.nowrap { white-space: nowrap; }
 
   /* ================= NEST ADMIN 8 (js/na8-panel.js) =================
      nest_admin_8.html runs in one frame laid over the PREVIEW and STATUS boxes: its controls on the right, its sheets in the centre.
