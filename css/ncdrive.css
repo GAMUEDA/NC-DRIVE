@@ -101,6 +101,14 @@
   .field input.num { width: 76px; }
   .field input.txt { max-width: 130px; text-align: right; }
   select.sel { background: var(--panel); border: 1px solid var(--line); color: var(--ink); border-radius: 4px; padding: 3px 4px; font: 12px "Share Tech Mono", monospace; max-width: 170px; }
+  select.sel.wideSel { display: block; width: 100%; max-width: none; margin-top: 3px; }
+  .woBtn, .nestParts { background: var(--accent2); border-color: var(--accent2); color: #111; font-weight: 700; letter-spacing: .06em; }
+  .woBtn { margin-bottom: 8px; }
+  .nestParts { padding: 9px; font-size: 13px; }
+  .nestParts:disabled { opacity: .45; }
+  .sideDrop { margin-bottom: 8px; padding: 10px; font-size: 11px; text-align: center; }
+  #secParts .chk { margin-bottom: 3px; }
+  #secParts #zoneBtn { margin-top: 8px; }
   .part .turnRow { font-size: 11px; color: var(--muted); cursor: pointer; }
   .part .turnRow.on { color: var(--accent2); }
   .chk { display: flex; gap: 6px; align-items: flex-start; font-size: 12px; color: var(--muted); margin-bottom: 5px; cursor: pointer; }

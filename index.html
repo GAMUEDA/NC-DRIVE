@@ -72,63 +72,65 @@
         </div>
         <div class="readouts"><span>PARTS</span><b id="roParts">0</b><span>PIECES</span><b id="roPcs">0</b><span>SHEETS</span><b id="roSheets">0</b><span>NEST TIME</span><b id="roTime">—</b></div>
       </div>
-      <div class="sec" id="secNest">
-        <h2>Nest</h2>
-        <button class="wide addNest" id="addNestBtn" hidden title="Keeps every part that is already placed exactly where it is. Only the new parts are fitted: into free space on the existing sheets first, then onto new sheets.">Add new parts to the current nest</button>
-        <div class="hint" id="addInfo"></div>
+      <!-- from here down: nest_admin 8's side panel, Import work order … Nest Parts, in its order and words -->
+      <div class="sec" id="secParts">
+        <h2>Parts</h2>
+        <button class="wide woBtn" id="woBtn" title="Opens Parts List PDF: read the part numbers and quantities from a work order, pull each part from the linked folders">Import work order…</button>
+        <div class="drop sideDrop" id="drop2" title="Same as the Parts box on the left">Drop .dxf, .nc, or .pdf files here<br>or click to browse</div>
+        <div id="secLib">
+          <div class="btnRow"><button class="ghost mini" id="libLink" title="Link a parts folder (Edge / Chrome). Linking is instant: nothing is scanned.">Link parts folder…</button><button class="ghost mini" id="libReconnect" hidden>Reconnect</button></div>
+          <div class="libRoots" id="libRoots"></div>
+          <textarea class="txtArea" id="libNums" rows="2" placeholder="Part numbers, e.g. 19992 14738 110296 (or paste a column). Takes the .NC if there is one, else the .DXF, plus the PDF"></textarea>
+          <div class="btnRow"><button class="ghost mini" id="libGo" disabled>Pull parts from folder</button><span class="hint">Ctrl+Enter</span></div>
+          <div class="hint" id="libResult"></div>
+        </div>
+        <div id="secRules">
+          <div class="hint">Never programmed, can't be done on the laser:</div>
+          <div class="ruleChips" id="omitChips"></div>
+          <div class="btnRow" id="omitAdmin" hidden><input class="txt" id="omitIn" placeholder="add a number" style="max-width:110px"><button class="ghost mini" id="omitAdd">Add</button><button class="ghost mini" id="omitCopy">Copy list</button></div>
+          <div class="hint" id="fixedNote" style="margin-top:6px;"></div>
+        </div>
+        <label class="chk" style="margin-top:8px"><input type="checkbox" id="cleanChk" checked> Remove stray geometry (marks near 0,0, etc.)</label>
+        <label class="chk"><input type="checkbox" id="bendChk" checked> Remove bend lines (full-span, unconnected)</label>
+        <label class="chk"><input type="checkbox" id="etchChk" checked> Detect etched text (DXF, no layer needed)</label>
+        <label class="chk"><input type="checkbox" id="featChk" checked> Skip countersink / feature outlines (not through-cuts)</label>
         <button class="ghost wide" id="zoneBtn" disabled title="Parts down the side, zones across the top: type each zone's quantity and the part's total is the sum">Enter quantities by zone…</button>
+        <div class="hint">The parts themselves are listed in the Parts box on the left.</div>
         <button class="ghost wide" id="clearAllBtn" disabled title="Remove every part (click twice)">Clear all parts</button>
       </div>
       <div class="sec">
-        <h2>Job</h2>
-        <div class="field"><label for="jobIn">Job name</label><input class="txt" id="jobIn" placeholder="e.g. 3369"></div>
-      </div>
-      <div class="sec" id="secLib">
-        <h2>Parts folder</h2>
-        <div class="btnRow"><button class="ghost mini" id="libLink" title="Link a parts folder (Edge / Chrome). Linking is instant: nothing is scanned.">Link parts folder…</button><button class="ghost mini" id="libReconnect" hidden>Reconnect</button></div>
-        <div class="libRoots" id="libRoots"></div>
-        <textarea class="txtArea" id="libNums" rows="2" placeholder="Part numbers, e.g. 19992 14738 110296 (or paste a column). Takes the .NC if there is one, else the .DXF, plus the PDF"></textarea>
-        <div class="btnRow"><button class="ghost mini" id="libGo" disabled>Pull parts from folder</button><span class="hint">Ctrl+Enter</span></div>
-        <div class="hint" id="libResult"></div>
-      </div>
-      <div class="sec">
         <h2>Machine</h2>
-        <div class="seg" id="bedSeg" style="width:100%;margin-bottom:8px;"><button data-b="0" class="on" style="flex:1;">4' × 10'</button><button data-b="1" style="flex:1;">6' × 14'</button></div>
-        <div class="hint" style="margin-bottom:5px;">Material on hand (the sheet you are cutting from)</div>
+        <div class="seg" id="bedSeg" style="width:100%;margin-bottom:8px;"><button data-b="0" class="on" style="flex:1;">4' × 10' bed</button><button data-b="1" style="flex:1;">6' × 14' bed</button></div>
+        <div class="hint" style="margin-bottom:5px;">Material on hand (sheet you're actually cutting from)</div>
         <div class="field"><label for="sheetW">Width</label><span><input class="num" id="sheetW" type="number" step="1"> mm</span></div>
         <div class="field"><label for="sheetH">Length</label><span><input class="num" id="sheetH" type="number" step="1"> mm</span></div>
         <div class="hint mono" id="bedNote"></div>
-        <button class="ghost mini" id="resetSheet" title="Material size = the machine bed">Reset to bed size</button>
+        <button class="ghost mini" id="resetSheet" title="Material size = the machine bed">reset to bed size</button>
       </div>
       <div class="sec">
         <h2>Spacing</h2>
         <div class="field"><label for="gapIn">Part gap</label><span><input class="num" id="gapIn" type="number" value="6.35" step="0.1"> mm</span></div>
         <div class="field"><label for="marginIn">Sheet margin</label><span><input class="num" id="marginIn" type="number" value="10" step="0.5"> mm</span></div>
-        <div class="hint">Parts only sit at 0° or 180° (or the whole nest at 90°/270°) to respect grain direction, never mixed. Parts are never mirrored, so etching stays on the right side.</div>
-        <div class="field" style="margin-top:6px"><label for="orientSel">Part direction</label><select class="sel" id="orientSel" title="Forces every part the same way (grain is kept). Change it, then press Nest again."><option value="auto" title="Whichever uses less sheet">Auto</option><option value="v" title="Long side down the sheet">Vertical</option><option value="h" title="Long side across the sheet">Horizontal</option></select></div>
-        <div class="hint">Parts fill from the sheet's zero, the bottom-right corner: bottom row first, right to left. Tick “Turn 90°” on a part to turn just that part.</div>
+        <div class="hint">Parts only sit at 0° or 180° (or the whole nest at 90°/270°) to respect grain direction, never mixed. This is a laser, not a print, so nothing gets flipped/mirrored (etching would end up on the wrong side).</div>
+        <div style="margin-top:6px"><label for="orientSel" class="hint">Part direction</label><select class="sel wideSel" id="orientSel"><option value="auto">Auto — whichever uses less sheet</option><option value="v">Vertical — long side down the sheet</option><option value="h">Horizontal — long side across the sheet</option></select></div>
+        <div class="hint">Forces every part the same way (grain is kept). Change it, then press Nest Parts again.</div>
         <label class="chk" style="margin-top:6px"><input type="checkbox" id="sectChk" checked> Section cuts every 4' on long sheets</label>
-        <div class="hint">Full-length nests keep a clear lane at each 4' mark (a 10' sheet = 3 sections, a 14' sheet = 4) with a line drawn there, so the sheet can be cut into handleable pieces. If a part is longer than 4', that job isn't sectioned. The lines are not in the .nc.</div>
-        <label class="chk" style="margin-top:6px"><input type="checkbox" id="skelChk"> Skeleton cut 0.5" above the nest</label>
-        <div class="hint">One straight cut across the usable width above the tallest part frees the unused strip in one piece. On the 4' × 10', a gauge with a part longer than 10' moves to a 4' × 14' sheet by itself.</div>
+        <div class="hint">Full-length nests keep a clear lane at each 4' mark (a 10' sheet = 3 sections, a 14' sheet = 4) with a cut line drawn there, so the sheet can be cut into handleable pieces. If a part is longer than 4' that job isn't sectioned.</div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="skelChk"> Skeleton cut (horizontal)</label>
+        <div class="hint">One straight cut across the usable width, 0.5" above the tallest placed part on each sheet, frees the unused sheet above the nest in one strip.</div>
       </div>
       <div class="sec">
-        <h2>DXF clean-up</h2>
-        <label class="chk"><input type="checkbox" id="cleanChk" checked> Remove stray geometry (marks near 0,0, etc.)</label>
-        <label class="chk"><input type="checkbox" id="bendChk" checked> Remove bend lines (full-span, unconnected)</label>
-        <label class="chk"><input type="checkbox" id="etchChk" checked> Detect etched text</label>
-        <label class="chk"><input type="checkbox" id="featChk" checked> Skip countersink / feature outlines</label>
-      </div>
-      <div class="sec" id="secRules">
-        <h2>Laser rules</h2>
-        <div class="hint">Never programmed, can't be done on the laser:</div>
-        <div class="ruleChips" id="omitChips"></div>
-        <div class="btnRow" id="omitAdmin" hidden><input class="txt" id="omitIn" placeholder="add a number" style="max-width:110px"><button class="ghost mini" id="omitAdd">Add</button><button class="ghost mini" id="omitCopy">Copy list</button></div>
-        <div class="hint" id="fixedNote" style="margin-top:6px;"></div>
+        <h2>Job</h2>
+        <div class="field"><label for="jobIn">Job name</label><input class="txt" id="jobIn" placeholder="e.g. 3369"></div>
       </div>
       <div class="sec">
-        <h2>NC output</h2>
-        <div class="hint">Bodor dialect: G92 zero, G21 metric, G91 incremental. One pierce per closed contour (G41 + M07 … M08 + G40), holes before the outer profile, etching as M11/M09 … M10/M12. Feed and power are set on the machine.</div>
+        <h2>G-code (.nc)</h2>
+        <div class="hint">Matches your Bodor post's dialect: G92 zero / G21 metric / G91 incremental, one pierce (G41+M07 … M08+G40) per closed contour, holes before the outer profile. Feed rate and laser power aren't in the file. Set those on the machine as usual.</div>
+      </div>
+      <div class="sec" id="secNest">
+        <button class="wide nestParts" id="nestBtn2" disabled>Nest Parts</button>
+        <button class="wide addNest" id="addNestBtn" hidden title="Keeps every part that is already placed exactly where it is. Only the new parts are fitted: into free space on the existing sheets first, then onto new sheets.">Add new parts to the current nest</button>
+        <div class="hint" id="addInfo"></div>
       </div>
       <div class="lockRow"><button class="ghost mini" id="lockStatus" title="Spacing and DXF clean-up settings">🔒 Settings locked</button><span id="unlockRow" hidden><input class="txt" id="unlockKey" type="password" placeholder="admin key" style="max-width:100px"><button class="ghost mini" id="unlockGo">Go</button></span></div>
     </div>
