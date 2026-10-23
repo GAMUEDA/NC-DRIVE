@@ -546,3 +546,14 @@
   .wall:hover, .wall.active, .wall:focus-visible { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
   .tool.page { border: var(--box-line-width) solid var(--box-line); }
 .nowrap { white-space: nowrap; }
+  /* Copy to Drive step 4: the part numbers as an editable list */
+  .cpList { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); min-height: 120px; max-height: 340px; overflow: auto; padding: 4px; }
+  .cpItem { display: grid; grid-template-columns: 30px 1fr auto; gap: 6px; align-items: center; padding: 2px 2px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); }
+  .cpItem:last-child { border-bottom: none; }
+  .cpItem span { font-size: 11px; text-align: right; }
+  .cpItem input.cpEdit { max-width: none; text-align: left; background: transparent; border-color: transparent; }
+  .cpItem input.cpEdit:hover, .cpItem input.cpEdit:focus { border-color: var(--accent); background: var(--panel2, var(--panel)); }
+  .cpItem .cpDel:hover { color: var(--bad); border-color: var(--bad); }
+  .cpEmpty { padding: 10px; font-size: 12px; }
+  .cpAddRow { margin-top: 6px; }
+  .cpAddRow input.txt { flex: 1; max-width: none; text-align: left; }
