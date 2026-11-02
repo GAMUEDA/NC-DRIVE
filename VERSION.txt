@@ -1,2 +1,3 @@
-NC Drive v19
-Copy to Drive: only files named 1…, .dxf in a DXF folder, 1…/Amada folders copied whole
+NC Drive v20
+Copy to Drive: a pop-up when copying is done, with the list of every file copied, in order (Copy list / Save list)
+v19: only files named 1…, .dxf in a DXF folder, 1…/Amada folders copied whole

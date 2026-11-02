@@ -6,7 +6,8 @@
    parseTypes("NC, PDF")                 → ['nc', 'pdf']
    planCopy(parts, types, found, folders) → rows [{part, type, f, how:'ok'|'dxf'|'dxfdup'|'missing', st}]
                                            (a folder row has type 'dir' and f = {name, path, handle})
-   copyPlannedFiles(rows, dir, destLabel, {onRow, isStopped}) → {copied}  writes every 'wait' row into dir
+   copyPlannedFiles(rows, dir, destLabel, {onRow, isStopped}) → {copied, files}  writes every 'wait' row into dir
+     files: every file written, in the order it was copied: [{part, name, to (full target path), how}]
    copyPartsToDrive(parts, types, targetDir, opts) → the whole step: search (P8) → plan → copy
    The DXF stand-in goes to the same DXF folder as every other DXF.
    ===================================================================================================== */
@@ -36,20 +37,21 @@ function planCopy(parts, types, found, folders) {
   return rows;
 }
 
-// Copy a whole folder (and everything in it) into dir. → number of files written
-async function copyFolderInto(src, dir) {
-  const out = await dir.getDirectoryHandle(src.name, { create: true });
+// Copy a whole folder (and everything in it) into dir; each file written is passed to wrote(name, folderPath).
+// → number of files written
+async function copyFolderInto(src, dir, label, wrote) {
+  const out = await dir.getDirectoryHandle(src.name, { create: true }), here = label + '\\' + src.name;
   let n = 0;
   for await (const e of src.values()) {
-    if (e.kind === 'file') { await writeFileTo(out, e.name, await e.getFile()); n++; }
-    else n += await copyFolderInto(e, out);
+    if (e.kind === 'file') { await writeFileTo(out, e.name, await e.getFile()); n++; if (wrote) wrote(e.name, here); }
+    else n += await copyFolderInto(e, out, here, wrote);
   }
   return n;
 }
 
 async function copyPlannedFiles(rows, dir, destLabel, opts) {
   opts = opts || {};
-  const todo = rows.filter(x => x.st === 'wait'), done = new Map();
+  const todo = rows.filter(x => x.st === 'wait'), done = new Map(), files = [];
   let dxfDir = null, copied = 0;
   for (const row of todo) {
     if (opts.isStopped && opts.isStopped()) break;
@@ -57,15 +59,15 @@ async function copyPlannedFiles(rows, dir, destLabel, opts) {
     if (opts.onRow) opts.onRow(row, 'start');
     try {
       if (row.type === 'dir') {
-        if (!done.has(row.f.path)) { copied += await copyFolderInto(row.f.handle, dir); done.set(row.f.path, true); }
+        if (!done.has(row.f.path)) { copied += await copyFolderInto(row.f.handle, dir, destLabel, (name, at) => files.push({ part: row.part, name, to: at + '\\' + name, how: 'folder' })); done.set(row.f.path, true); }
         row.dest = destLabel + '\\' + row.f.name;
       } else if (row.f.ext === 'dxf') {
         dxfDir = dxfDir || (await dir.getDirectoryHandle(CONFIG.copy.dxfFolder, { create: true }));
-        if (!done.has(row.f.path)) { await writeFileTo(dxfDir, row.f.name, row.f.file); done.set(row.f.path, true); copied++; }
         row.dest = destLabel + '\\' + CONFIG.copy.dxfFolder;
+        if (!done.has(row.f.path)) { await writeFileTo(dxfDir, row.f.name, row.f.file); done.set(row.f.path, true); copied++; files.push({ part: row.part, name: row.f.name, to: row.dest + '\\' + row.f.name, how: row.how }); }
       } else {
-        if (!done.has(row.f.path)) { await writeFileTo(dir, row.f.name, row.f.file); done.set(row.f.path, true); copied++; }
         row.dest = destLabel;
+        if (!done.has(row.f.path)) { await writeFileTo(dir, row.f.name, row.f.file); done.set(row.f.path, true); copied++; files.push({ part: row.part, name: row.f.name, to: row.dest + '\\' + row.f.name, how: row.how }); }
       }
       row.st = row.how === 'dxf' ? 'dxf' : 'ok';
     } catch (e) {
@@ -74,11 +76,11 @@ async function copyPlannedFiles(rows, dir, destLabel, opts) {
     }
     if (opts.onRow) opts.onRow(row, 'done');
   }
-  return { copied };
+  return { copied, files };
 }
 
 // targetDir: the target drive handle. opts: {jobFolder (name or ''), progress, onPlan(rows), onRow(row, phase)}
-// → {rows, dir, copied, stopped, stoppedWhileSearching}
+// → {rows, dir, copied, files, stopped, stoppedWhileSearching}
 async function copyPartsToDrive(parts, types, targetDir, opts) {
   opts = opts || {};
   // one pass through the source for every part and every type (+ the DXF fallback), and the 1… / Amada folders
@@ -90,5 +92,5 @@ async function copyPartsToDrive(parts, types, targetDir, opts) {
   if (opts.jobFolder) dir = await targetDir.getDirectoryHandle(opts.jobFolder.replace(/[\\/:*?"<>|]+/g, '_'), { create: true });
   const destLabel = dir === targetDir ? targetDir.name : targetDir.name + '\\' + dir.name;
   const res = await copyPlannedFiles(rows, dir, destLabel, { onRow: opts.onRow, isStopped: () => lib.stop });
-  return { rows, dir, copied: res.copied, stopped: lib.stop };
+  return { rows, dir, copied: res.copied, files: res.files, stopped: lib.stop };
 }

@@ -162,6 +162,45 @@ function renderCopyRows() {
     return `<tr${first ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${first ? esc(r.part) : ''}</td><td><span class="ext ${r.type}">${r.type === 'dir' ? 'FOLDER' : r.type.toUpperCase()}</span></td><td>${r.f ? `<span title="${esc(r.f.path)}">${esc(r.f.name)}</span>` : '<span class="muted">—</span>'}</td><td>${res}</td></tr>`;
   }).join('') + '</tbody>';
 }
+// The summary window: every file copied, in the order it was copied, where it went; then what was missing or failed.
+function copyListText() {
+  const d = cp.done;
+  if (!d) return '';
+  const lines = [`NC Drive v${CONFIG.version} · Copy to Drive · ${d.when}`, `${d.files.length} file${d.files.length === 1 ? '' : 's'} copied to ${d.target}${d.stopped ? ' (stopped)' : ''}`, ''];
+  d.files.forEach((f, i) => lines.push(`${String(i + 1).padStart(3)}  ${f.part.padEnd(8)}  ${f.to}${f.how === 'dxf' ? '   (DXF instead)' : ''}`));
+  if (d.miss.length) lines.push('', 'Not copied:', ...d.miss.map(m => `     ${m.part.padEnd(8)}  ${m.type.toUpperCase()}  ${m.why}`));
+  return lines.join('\r\n');
+}
+function showCopyDone() {
+  const d = cp.done;
+  if (!d) return;
+  $('#cpDoneT').textContent = d.stopped ? '■ Copying stopped' : d.files.length ? '✓ Copying done' : 'Copying done — nothing copied';
+  $('#cpDoneSum').innerHTML = `<b>${d.files.length}</b> file${d.files.length === 1 ? '' : 's'} copied to <b>${esc(d.target)}</b> in ${d.secs} s · ${esc(d.when)}`;
+  $('#cpDoneTable').innerHTML = '<thead><tr><th>#</th><th>Part</th><th>File</th><th>Copied to</th></tr></thead><tbody>'
+    + (d.files.length ? d.files.map((f, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(f.part)}</td><td>${esc(f.name)}${f.how === 'dxf' ? ' <span class="warnc">(DXF instead)</span>' : ''}</td><td class="mono muted">${esc(f.to.slice(0, f.to.length - f.name.length - 1))}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No files were copied.</td></tr>') + '</tbody>';
+  $('#cpDoneMiss').innerHTML = d.miss.length ? `<b class="bad">Not copied (${d.miss.length}):</b> ` + d.miss.map(m => `<span class="mono">${esc(m.part)}</span> ${m.type.toUpperCase()} <span class="muted">${esc(m.why)}</span>`).join(' · ') : '';
+  $('#cpDoneNote').textContent = '';
+  const dlg = $('#cpDone');
+  if (!dlg.open) dlg.showModal();
+  $('#cpDoneOk').focus();
+}
+function wireCopyDone() {
+  const close = () => $('#cpDone').close();
+  $('#cpDoneOk').onclick = close; $('#cpDoneX').onclick = close;
+  $('#cpShowList').onclick = showCopyDone;
+  $('#cpDoneCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(copyListText()); $('#cpDoneNote').textContent = 'List copied to the clipboard.'; }
+    catch (e) { $('#cpDoneNote').textContent = 'The browser would not use the clipboard — use Save list.'; }
+  };
+  $('#cpDoneSave').onclick = () => {
+    const a = document.createElement('a'), stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    a.href = URL.createObjectURL(new Blob([copyListText()], { type: 'text/plain' }));
+    a.download = `copied-files-${(cp.done.job || stamp).replace(/[\\/:*?"<>|]+/g, '_')}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+}
 // Step 5: check the four boxes, then run copyPartsToDrive (P10).
 async function runCopy() {
   if (cp.running) return;
@@ -197,6 +236,12 @@ async function runCopy() {
     st.innerHTML = `${res.stopped ? '<span class="warnc">Stopped.</span> ' : ''}<b>${res.copied}</b> file${res.copied === 1 ? '' : 's'} copied to <b>${esc(res.dir.name)}</b> in ${((performance.now() - t0) / 1000).toFixed(1)} s`
       + (n('dxf') ? ` · <span class="warnc">${n('dxf')} DXF instead</span>` : '') + (n('fail') ? ` · <span class="bad">${n('fail')} failed</span>` : '')
       + (noneParts.length ? ` · <span class="bad">nothing found for ${esc(noneParts.join(', '))}</span>` : missParts.length ? ` · <span class="bad">missing: ${esc(missParts.join(', '))}</span>` : '');
+    const why = { missing: 'missing (no DXF either)', fail: 'could not write' };
+    cp.done = { files: res.files, target: res.dir === cp.target ? cp.target.name : cp.target.name + '\\' + res.dir.name,
+      secs: ((performance.now() - t0) / 1000).toFixed(1), when: new Date().toLocaleString(), stopped: !!res.stopped, job: $('#cpJobDir').checked ? $('#cpJob').value.trim() : '',
+      miss: cp.rows.filter(x => x.st === 'missing' || x.st === 'fail' || x.st === 'wait').map(x => ({ part: x.part, type: x.type, why: x.st === 'fail' ? (x.err || why.fail) : x.st === 'wait' ? 'not copied (stopped)' : x.type === CONFIG.copy.fallbackType ? 'missing' : why.missing })) };
+    $('#cpShowList').hidden = false;
+    showCopyDone();
     log(`Copy to ${res.dir.name}: ${res.copied} files, ${n('dxf')} DXF instead, ${noneParts.length} part(s) not found${noneParts.length ? ' — ' + noneParts.join(', ') : ''}`, noneParts.length || n('fail') ? 'warn' : 'ok');
     reportProgress('Copy to drive', `${res.copied} files copied`, 1, true);
   } catch (e) {
@@ -221,6 +266,7 @@ function startCopyPage() {
   $('#cpSrcLocate').onclick = locateSource;
   $('#cpDstPick').onclick = openTarget;
   wireCopyPartList();
+  wireCopyDone();
   $('#cpJob').addEventListener('input', () => { cp.jobTyped = true; });
   wireDropZone('cpDrop', 'cpFile', readCopyList);
   window.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readCopyList(f); }); // a drop anywhere on the page

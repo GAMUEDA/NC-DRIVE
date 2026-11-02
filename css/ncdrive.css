@@ -559,3 +559,8 @@
   .cpAddRow input.txt { flex: 1; max-width: none; text-align: left; }
 
   .ver { font: 500 .62em "Share Tech Mono", monospace; letter-spacing: .04em; color: var(--muted); text-shadow: none; }
+  .cpDoneDlg { width: min(820px, 94vw); }
+  .cpDoneDlg .db { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+  .cpDoneSum { font-size: 14px; }
+  .cpDoneWrap { max-height: 55vh; overflow: auto; }
+  .cpDoneMiss { font-size: 12px; line-height: 1.6; }
