@@ -564,3 +564,10 @@
   .cpDoneSum { font-size: 14px; }
   .cpDoneWrap { max-height: 55vh; overflow: auto; }
   .cpDoneMiss { font-size: 12px; line-height: 1.6; }
+  dialog.cpDoneDlg[open] { position: fixed; inset: 0; margin: auto; z-index: 1001; }
+  body.cpDlgOpen::after { content: ""; position: fixed; inset: 0; z-index: 1000; background: rgba(1,6,12,.72); backdrop-filter: blur(2px); }
+  .cpMissDlg .dh h3 { color: var(--bad, #ff5d5d); }
+  @media (min-width: 1100px) {
+    body.cpPair #cpDone { margin: auto auto auto 2vw; width: 54vw; }
+    body.cpPair #cpMiss { margin: auto 2vw auto auto; width: 40vw; }
+  }

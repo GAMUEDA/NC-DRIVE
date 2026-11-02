@@ -1,3 +1,4 @@
-NC Drive v20
-Copy to Drive: a pop-up when copying is done, with the list of every file copied, in order (Copy list / Save list)
+NC Drive v21
+Copy to Drive: a second window lists every missing .nc and .pdf file (Copy list / Save list)
+v20: a pop-up when copying is done, with the list of every file copied, in order
 v19: only files named 1…, .dxf in a DXF folder, 1…/Amada folders copied whole

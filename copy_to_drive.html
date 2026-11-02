@@ -34,7 +34,7 @@
       <div class="row" style="margin-top:4px;"><span class="mono" id="cpCount"></span><span class="note" id="cpListSrc"></span></div></div></div>
     <div class="step cpCol"><div class="sn">5</div><div class="cpColBody">
       <label class="lb">Processed — files copied <span class="mono muted" id="cpDoneCount"></span></label>
-      <div class="row"><button id="cpRun">Copy files</button><button class="ghost" id="cpStop" hidden>Stop</button><button class="ghost" id="cpShowList" hidden title="The list of the files copied by the last run">Copied files list</button><span class="note">For each part: the newest file of each type whose name starts with “1”, plus the folders named 1… or Amada… inside the part's folder (copied whole) — all in the main folder of the target, except the .dxf files, which go in its DXF folder. A type that is missing (e.g. no NC) → the part's DXF is copied instead.</span></div>
+      <div class="row"><button id="cpRun">Copy files</button><button class="ghost" id="cpStop" hidden>Stop</button><button class="ghost" id="cpShowList" hidden title="The list of the files copied by the last run">Copied files list</button><button class="ghost" id="cpShowMiss" hidden title="The .nc and .pdf files the last run could not find">Missing files list</button><span class="note">For each part: the newest file of each type whose name starts with “1”, plus the folders named 1… or Amada… inside the part's folder (copied whole) — all in the main folder of the target, except the .dxf files, which go in its DXF folder. A type that is missing (e.g. no NC) → the part's DXF is copied instead.</span></div>
       <progress id="cpBar" hidden></progress>
       <div class="tblWrap" id="cpWrap" style="margin-top:8px;"><table class="tbl" id="cpTable"></table></div></div></div>
     </div>
@@ -50,6 +50,14 @@
     <div id="cpDoneMiss" class="cpDoneMiss"></div>
   </div>
   <div class="df"><button class="ghost" id="cpDoneCopy" title="Put the list on the clipboard">Copy list</button><button class="ghost" id="cpDoneSave" title="Save the list as a text file">Save list (.txt)</button><span class="grow" id="cpDoneNote"></span><button id="cpDoneOk">OK</button></div>
+</dialog>
+<dialog class="tool cpDoneDlg cpMissDlg" id="cpMiss" aria-labelledby="cpMissT">
+  <div class="dh"><h3 id="cpMissT">✗ Missing .nc and .pdf files</h3><button class="ghost mini" id="cpMissX" aria-label="Close">✕</button></div>
+  <div class="db">
+    <div id="cpMissSum" class="cpDoneSum"></div>
+    <div class="tblWrap cpDoneWrap"><table class="tbl" id="cpMissTable"></table></div>
+  </div>
+  <div class="df"><button class="ghost" id="cpMissCopy" title="Put the list on the clipboard">Copy list</button><button class="ghost" id="cpMissSave" title="Save the list as a text file">Save list (.txt)</button><span class="grow" id="cpMissNote"></span><button id="cpMissOk">OK</button></div>
 </dialog>
 <script src="js/common.js"></script>
 <script src="js/config.js"></script>
