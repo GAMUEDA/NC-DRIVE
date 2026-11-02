@@ -21,8 +21,8 @@
       <div class="row"><input class="txt" id="cpDst" style="flex:0 0 90px;" value="E:"><button class="ghost mini" id="cpDstPick">Open…</button><span id="cpDstState" style="font-size:12px;"></span></div>
       <label class="chk" style="margin:6px 0 0;"><input type="checkbox" id="cpJobDir"> Put the files in a folder named after the job</label> <input class="txt" id="cpJob" style="flex:0 1 160px;margin-top:4px;" placeholder="job name" title="Filled from NC Drive or the parts list; you can type it"></div></div>
     <div class="step"><div class="sn">3</div><div>
-      <label class="lb" for="cpTypes">File types to copy</label>
-      <div class="row"><input class="txt" id="cpTypes" value="NC, PDF" placeholder="NC, PDF"><span id="cpTypesNote" style="font-size:12px;"></span></div></div></div>
+      <label class="lb" for="cpTypes">File types to copy <span class="note">only files whose name starts with “1” · .nc and .pdf go in the main folder, .dxf in its DXF folder</span></label>
+      <div class="row"><input class="txt" id="cpTypes" value="NC, PDF, DXF" placeholder="NC, PDF, DXF"><span id="cpTypesNote" style="font-size:12px;"></span></div></div></div>
     <div class="cpCols">
     <div class="step cpCol"><div class="sn">4</div><div class="cpColBody">
       <label class="lb" for="cpParts">Part numbers — read from the PDF</label>
@@ -34,7 +34,7 @@
       <div class="row" style="margin-top:4px;"><span class="mono" id="cpCount"></span><span class="note" id="cpListSrc"></span></div></div></div>
     <div class="step cpCol"><div class="sn">5</div><div class="cpColBody">
       <label class="lb">Processed — files copied <span class="mono muted" id="cpDoneCount"></span></label>
-      <div class="row"><button id="cpRun">Copy files</button><button class="ghost" id="cpStop" hidden>Stop</button><span class="note">For each part: the newest file of each type. A type that is missing (e.g. no NC) → the part's DXF is copied instead, into the same target drive.</span></div>
+      <div class="row"><button id="cpRun">Copy files</button><button class="ghost" id="cpStop" hidden>Stop</button><span class="note">For each part: the newest file of each type whose name starts with “1”, plus the folders named 1… or Amada… inside the part's folder (copied whole) — all in the main folder of the target, except the .dxf files, which go in its DXF folder. A type that is missing (e.g. no NC) → the part's DXF is copied instead.</span></div>
       <progress id="cpBar" hidden></progress>
       <div class="tblWrap" id="cpWrap" style="margin-top:8px;"><table class="tbl" id="cpTable"></table></div></div></div>
     </div>

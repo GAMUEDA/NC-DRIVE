@@ -1,6 +1,7 @@
 /* =====================================================================================================
    COPY PARTS TO DRIVE page (copy_to_drive.html) — screen for P10
    1 default drive (source = the linked parts folders) · 2 target drive (default E:) · 3 file types
+   (only names starting with "1"; .nc / .pdf and the 1… / Amada folders in the main folder, .dxf in DXF\)
    4 part numbers from a PDF · 5 process. Works fully on its own; when NC Drive is open its job name is used
    for the job folder. Address: copy_to_drive.html?parts=19992%2014738&src=WO-55123.pdf fills step 4.
    ===================================================================================================== */
@@ -158,7 +159,7 @@ function renderCopyRows() {
       missing: '<span class="bad">✗ missing (no DXF either)</span>',
       fail: `<span class="bad">✗ ${esc(r.err || 'could not write')}</span>`,
     }[r.st] || '';
-    return `<tr${first ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${first ? esc(r.part) : ''}</td><td><span class="ext ${r.type}">${r.type.toUpperCase()}</span></td><td>${r.f ? `<span title="${esc(r.f.path)}">${esc(r.f.name)}</span>` : '<span class="muted">—</span>'}</td><td>${res}</td></tr>`;
+    return `<tr${first ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${first ? esc(r.part) : ''}</td><td><span class="ext ${r.type}">${r.type === 'dir' ? 'FOLDER' : r.type.toUpperCase()}</span></td><td>${r.f ? `<span title="${esc(r.f.path)}">${esc(r.f.name)}</span>` : '<span class="muted">—</span>'}</td><td>${res}</td></tr>`;
   }).join('') + '</tbody>';
 }
 // Step 5: check the four boxes, then run copyPartsToDrive (P10).
@@ -171,7 +172,7 @@ async function runCopy() {
   if (!types.length) return fail('Step 3: type at least one file type.');
   if (!parts.length) return fail('Step 4: read a PDF or type the part numbers.');
   if (!(await ensurePerm(cp.target, 'readwrite'))) return fail(`Permission to write to “${esc(cp.target.name)}” was not given.`);
-  ls.set('types', $('#cpTypes').value.trim()); ls.set('dst', $('#cpDst').value.trim()); ls.set('src', $('#cpSrcTxt').value.trim());
+  ls.set('types1', $('#cpTypes').value.trim()); ls.set('dst', $('#cpDst').value.trim()); ls.set('src', $('#cpSrcTxt').value.trim());
   cp.running = true; lib.stop = false; lib.dirCache = new Map();
   $('#cpRun').disabled = true; $('#cpStop').hidden = false;
   cp.rows = [];
@@ -211,8 +212,8 @@ function startCopyPage() {
   startToolPage('copy');
   $('#cpSrcTxt').value = ls.get('src', '');
   $('#cpDst').value = ls.get('dst', CONFIG.copy.defaultTarget);
-  $('#cpTypes').value = ls.get('types', CONFIG.copy.defaultTypes);
-  [['cpSrcTxt', 'src'], ['cpDst', 'dst'], ['cpTypes', 'types']].forEach(([id, k]) => $('#' + id).addEventListener('change', () => {
+  $('#cpTypes').value = ls.get('types1', CONFIG.copy.defaultTypes); // new key: DXF is in the default types now
+  [['cpSrcTxt', 'src'], ['cpDst', 'dst'], ['cpTypes', 'types1']].forEach(([id, k]) => $('#' + id).addEventListener('change', () => {
     ls.set(k, $('#' + id).value.trim());
     if (id === 'cpTypes') showTypes();
     if (id === 'cpDst') showTarget();
