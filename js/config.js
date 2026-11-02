@@ -40,6 +40,9 @@
    NCLink.debug = true on any page prints the messages between pages.
    ===================================================================================================== */
 const CONFIG = {
+  // ---- program version: add 1 on every upgrade (also VERSION.txt). Shown next to NC DRIVE on every page. ----
+  version: 19,
+
   // ---- machine beds (the 4' × 10' / 6' × 14' buttons) ----
   beds: [
     { name: "4' × 10' Bodor", w: 1219.2, h: 3048 },
@@ -190,3 +193,10 @@ const CONFIG = {
   layout: { header: 56, dock: 96, command: 130, listFrac: 0.25, rightFrac: 0.22, split: 0.58 },
   gaugeColors: ['#3d8fd6', '#2f9e5a', '#d6453d', '#e0802a', '#8a63d2', '#c7a514', '#1fa59a', '#d0559a'],
 };
+
+// Show the version next to the NC DRIVE name on every page (and in the window title).
+document.addEventListener('DOMContentLoaded', () => {
+  const v = 'v' + CONFIG.version;
+  document.querySelectorAll('.brand h1, .brandLink').forEach(el => el.insertAdjacentHTML('beforeend', ` <small class="ver">${v}</small>`));
+  if (!/\bv\d+\b/.test(document.title)) document.title += ' · ' + v;
+});

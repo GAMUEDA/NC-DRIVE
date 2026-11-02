@@ -1,0 +1,2 @@
+NC Drive v19
+Copy to Drive: only files named 1…, .dxf in a DXF folder, 1…/Amada folders copied whole

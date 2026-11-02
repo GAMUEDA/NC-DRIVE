@@ -557,3 +557,5 @@
   .cpEmpty { padding: 10px; font-size: 12px; }
   .cpAddRow { margin-top: 6px; }
   .cpAddRow input.txt { flex: 1; max-width: none; text-align: left; }
+
+  .ver { font: 500 .62em "Share Tech Mono", monospace; letter-spacing: .04em; color: var(--muted); text-shadow: none; }
