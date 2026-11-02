@@ -53,15 +53,20 @@ function wireFileDrop() {
   const fileInput = $('#fileInput'), drop = $('#drop');
   $('#loadBtn').onclick = () => fileInput.click();
   drop.onclick = () => fileInput.click();
+  // System Status → Parts (nest_admin 8's panel): a second drop zone and Import work order (= Parts List PDF)
+  const drop2 = $('#drop2');
+  if (drop2) drop2.onclick = () => fileInput.click();
+  if ($('#woBtn')) $('#woBtn').onclick = () => openTool('plist');
   fileInput.onchange = () => { handleFiles([...fileInput.files]); fileInput.value = ''; };
   let dragDepth = 0;
-  window.addEventListener('dragenter', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { dragDepth++; drop.classList.add('over'); } });
-  window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) drop.classList.remove('over'); });
+  window.addEventListener('dragenter', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { dragDepth++; drop.classList.add('over'); if (drop2) drop2.classList.add('over'); } });
+  window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) { drop.classList.remove('over'); if (drop2) drop2.classList.remove('over'); } });
   window.addEventListener('dragover', e => e.preventDefault());
   window.addEventListener('drop', e => {
     e.preventDefault();
     dragDepth = 0;
     drop.classList.remove('over');
+    if (drop2) drop2.classList.remove('over');
     const fs = [...e.dataTransfer.files];
     if (!fs.length) return;
     handleFiles(fs);
@@ -217,6 +222,14 @@ function renderSheets() {
 }
 function wireSheetsPanel() {
   $('#nestBtn').onclick = nestAll;
+  // the Nest Parts button in System Status is a twin of the title-bar NEST button (same action, same enabled state)
+  const twin = $('#nestBtn2');
+  if (twin) {
+    twin.onclick = nestAll;
+    const sync = () => { twin.disabled = $('#nestBtn').disabled; };
+    new MutationObserver(sync).observe($('#nestBtn'), { attributes: true, attributeFilter: ['disabled'] });
+    sync();
+  }
   $('#sheetList').addEventListener('click', e => {
     const li = e.target.closest('.sheetItem');
     if (!li) return;

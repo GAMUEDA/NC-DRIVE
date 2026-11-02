@@ -68,13 +68,66 @@ async function openTarget() {
     $('#cpStatus').innerHTML = `<span class="bad">${esc(e && e.name === 'SecurityError' ? "The browser won't open the drive itself — make a folder on it (e.g. NC) and pick that." : 'Could not open it: ' + ((e && e.message) || e))}</span>`;
   }
 }
-// Step 4: part numbers from a PDF (or CSV / text), editable.
+// Step 4: part numbers from a PDF (or CSV / text), shown as a list: each one can be edited in place or removed (✕),
+// and more added one by one at the bottom. The hidden #cpParts textarea holds the list (one per line) for the copy.
+const cpPartsNow = () => splitTerms($('#cpParts').value);
+function storeCopyParts(list) { $('#cpParts').value = [...new Set(list.map(s => s.trim()).filter(Boolean))].join('\n'); countParts(); }
 function setCopyParts(list, src) {
-  $('#cpParts').value = list.join('\n');
-  countParts();
+  storeCopyParts(list);
+  renderCopyParts();
   if (src) $('#cpListSrc').innerHTML = `from <b>${esc(src)}</b>`;
 }
-function countParts() { const n = splitTerms($('#cpParts').value).length; $('#cpCount').textContent = n ? `${n} part number${n > 1 ? 's' : ''}` : ''; }
+function countParts() { const n = cpPartsNow().length; $('#cpCount').textContent = n ? `${n} part number${n > 1 ? 's' : ''}` : ''; }
+function renderCopyParts() {
+  const list = cpPartsNow();
+  $('#cpPartList').innerHTML = list.length
+    ? list.map((n, i) => `<div class="cpItem" data-i="${i}"><span class="mono muted">${i + 1}</span><input class="txt mono cpEdit" value="${esc(n)}" aria-label="Part number ${i + 1}" spellcheck="false"><button class="ghost mini cpDel" title="Remove ${esc(n)} from the list" aria-label="Remove">✕</button></div>`).join('')
+    : '<div class="muted cpEmpty">No part numbers yet. Drop the parts-list PDF above, or add them below.</div>';
+  $('#cpClearList').disabled = !list.length;
+}
+function addCopyParts() {
+  const inp = $('#cpAddIn'), add = splitTerms(inp.value);
+  if (!add.length) { inp.focus(); return; }
+  const before = cpPartsNow(), fresh = add.filter(t => !before.includes(t));
+  storeCopyParts(before.concat(add));
+  renderCopyParts();
+  inp.value = '';
+  inp.focus();
+  log(`Copy: added ${fresh.length ? fresh.join(', ') : 'nothing new'}${fresh.length < add.length ? ` (${add.length - fresh.length} already in the list)` : ''}`, 'ok');
+  const last = $('#cpPartList').lastElementChild;
+  if (last) last.scrollIntoView({ block: 'nearest' });
+}
+function wireCopyPartList() {
+  const box = $('#cpPartList');
+  // edit in place: Enter or leaving the box saves; an emptied box removes that part
+  box.addEventListener('change', e => {
+    const row = e.target.closest('.cpItem');
+    if (!row || !e.target.classList.contains('cpEdit')) return;
+    const list = cpPartsNow(), i = +row.dataset.i, v = splitTerms(e.target.value);
+    list.splice(i, 1, ...v);
+    storeCopyParts(list);
+    renderCopyParts();
+  });
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('cpEdit') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); e.target.blur(); } });
+  box.addEventListener('click', e => {
+    const b = e.target.closest('.cpDel');
+    if (!b) return;
+    const list = cpPartsNow(), i = +b.closest('.cpItem').dataset.i, [gone] = list.splice(i, 1);
+    storeCopyParts(list);
+    renderCopyParts();
+    log(`Copy: removed ${gone} from the list`);
+  });
+  $('#cpAdd').onclick = addCopyParts;
+  $('#cpAddIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); addCopyParts(); } });
+  $('#cpAddIn').addEventListener('paste', () => setTimeout(() => { if (/[\s,;]/.test($('#cpAddIn').value.trim())) addCopyParts(); }, 0)); // a pasted column goes straight in
+  let armed = 0;
+  $('#cpClearList').onclick = () => {
+    if (Date.now() - armed > 3000) { armed = Date.now(); $('#cpClearList').textContent = 'Click again to clear'; setTimeout(() => { $('#cpClearList').textContent = 'Clear list'; }, 3000); return; }
+    armed = 0; $('#cpClearList').textContent = 'Clear list';
+    setCopyParts([]); $('#cpListSrc').textContent = ''; log('Copy: part list cleared');
+  };
+  renderCopyParts();
+}
 async function readCopyList(f) {
   $('#cpListSrc').textContent = `Reading ${f.name}…`;
   try {
@@ -166,13 +219,13 @@ function startCopyPage() {
   }));
   $('#cpSrcLocate').onclick = locateSource;
   $('#cpDstPick').onclick = openTarget;
-  $('#cpParts').addEventListener('input', countParts);
+  wireCopyPartList();
   $('#cpJob').addEventListener('input', () => { cp.jobTyped = true; });
   wireDropZone('cpDrop', 'cpFile', readCopyList);
   window.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readCopyList(f); }); // a drop anywhere on the page
   $('#cpRun').onclick = runCopy;
   $('#cpStop').onclick = () => { lib.stop = true; };
-  $('#cpParts').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runCopy(); } });
+  $('#cpPartList').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runCopy(); } });
   // shared with the other pages
   const reloadRoots = () => loadRoots().then(renderCpRoots);
   const reloadTarget = () => loadTargetDrive().then(h => { cp.target = h; showTarget(); });

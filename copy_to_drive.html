@@ -28,7 +28,9 @@
       <label class="lb" for="cpParts">Part numbers — read from the PDF</label>
       <div class="drop" id="cpDrop" style="margin:0 0 6px;">Drop the parts-list / work-order PDF here (CSV or text works too), or click to browse</div>
       <input type="file" id="cpFile" accept=".pdf,.csv,.txt,.tsv" hidden>
-      <textarea class="ta" id="cpParts" placeholder="One part number per line — filled in from the PDF, or type / paste them"></textarea>
+      <textarea class="ta" id="cpParts" hidden></textarea>
+      <div class="cpList" id="cpPartList" aria-label="Part numbers"></div>
+      <div class="row cpAddRow"><input class="txt" id="cpAddIn" placeholder="Add part number(s), e.g. 19992 or paste a list"><button class="ghost" id="cpAdd" title="Add to the list (Enter)">+ ADD</button><button class="ghost mini" id="cpClearList" title="Remove every part number (click twice)">Clear list</button></div>
       <div class="row" style="margin-top:4px;"><span class="mono" id="cpCount"></span><span class="note" id="cpListSrc"></span></div></div></div>
     <div class="step cpCol"><div class="sn">5</div><div class="cpColBody">
       <label class="lb">Processed — files copied <span class="mono muted" id="cpDoneCount"></span></label>
