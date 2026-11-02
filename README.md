@@ -16,3 +16,7 @@ Open `index.html` (online: https://gamueda.github.io/NC-DRIVE/ once GitHub Pages
 Shared code is in `js/` (start with `js/config.js`, which holds every setting and a map of the processes) and the look is in `css/ncdrive.css`.
 
 The nesting follows nest_admin 5: grain (0°/180° or the whole nest at 90°/270°), optional section cuts every 4', and an automatic 4' × 14' sheet for parts longer than 10' (`CONFIG.nest` in `js/config.js`). The STATUS box on the main page (`js/ui-status.js`) also holds the nest_admin controls: add new parts to the current nest without moving placed parts, quantities by zone, pull parts by number from a linked parts folder, the laser rules (never-programmed numbers, fixed materials, DXF-only parts) and the settings lock. The rules and the admin key are in `CONFIG.rules` and `CONFIG.admin` in `js/config.js`.
+
+## Version
+
+The program version is `CONFIG.version` in `js/config.js` (shown next to NC DRIVE on every page) and `VERSION.txt`. Add 1 to both on every upgrade; each download zip carries the same number (`nc-drive-project_v21.zip`).

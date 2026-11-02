@@ -1,6 +1,7 @@
 /* =====================================================================================================
    COPY PARTS TO DRIVE page (copy_to_drive.html) — screen for P10
    1 default drive (source = the linked parts folders) · 2 target drive (default E:) · 3 file types
+   (only names starting with "1"; .nc / .pdf and the 1… / Amada folders in the main folder, .dxf in DXF\)
    4 part numbers from a PDF · 5 process. Works fully on its own; when NC Drive is open its job name is used
    for the job folder. Address: copy_to_drive.html?parts=19992%2014738&src=WO-55123.pdf fills step 4.
    ===================================================================================================== */
@@ -158,8 +159,85 @@ function renderCopyRows() {
       missing: '<span class="bad">✗ missing (no DXF either)</span>',
       fail: `<span class="bad">✗ ${esc(r.err || 'could not write')}</span>`,
     }[r.st] || '';
-    return `<tr${first ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${first ? esc(r.part) : ''}</td><td><span class="ext ${r.type}">${r.type.toUpperCase()}</span></td><td>${r.f ? `<span title="${esc(r.f.path)}">${esc(r.f.name)}</span>` : '<span class="muted">—</span>'}</td><td>${res}</td></tr>`;
+    return `<tr${first ? ' style="border-top:2px solid var(--line)"' : ''}><td class="mono">${first ? esc(r.part) : ''}</td><td><span class="ext ${r.type}">${r.type === 'dir' ? 'FOLDER' : r.type.toUpperCase()}</span></td><td>${r.f ? `<span title="${esc(r.f.path)}">${esc(r.f.name)}</span>` : '<span class="muted">—</span>'}</td><td>${res}</td></tr>`;
   }).join('') + '</tbody>';
+}
+// Two windows when copying is done. COPIED: every file copied, in the order it was copied, and where it went (then
+// anything else not copied). MISSING: every .nc and .pdf that was not found for a part (also when its DXF went instead).
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+function copyListText() {
+  const d = cp.done;
+  if (!d) return '';
+  const lines = [`NC Drive v${CONFIG.version} · Copy to Drive · ${d.when}`, `${plural(d.files.length, 'file')} copied to ${d.target}${d.stopped ? ' (stopped)' : ''}`, ''];
+  d.files.forEach((f, i) => lines.push(`${String(i + 1).padStart(3)}  ${f.part.padEnd(8)}  ${f.to}${f.how === 'dxf' ? '   (DXF instead)' : ''}`));
+  if (d.miss.length) lines.push('', 'Also not copied:', ...d.miss.map(m => `     ${m.part.padEnd(8)}  ${m.type.toUpperCase()}  ${m.why}`));
+  return lines.join('\r\n');
+}
+function missingListText() {
+  const d = cp.done;
+  if (!d) return '';
+  const lines = [`NC Drive v${CONFIG.version} · Copy to Drive · ${d.when}`, `${plural(d.lost.length, 'missing .nc / .pdf file')} (${plural(new Set(d.lost.map(m => m.part)).size, 'part')})`, ''];
+  d.lost.forEach((m, i) => lines.push(`${String(i + 1).padStart(3)}  ${m.part.padEnd(8)}  .${m.type.padEnd(4)}  ${m.note}`));
+  return lines.join('\r\n');
+}
+// The two windows open side by side and both can be used, so they are not modal: a dimmed layer covers the page instead.
+const syncDlgShade = () => document.body.classList.toggle('cpDlgOpen', !!document.querySelector('dialog.cpDoneDlg[open]'));
+function openDlg(id) { const dlg = $('#' + id); if (!dlg.open) dlg.show(); syncDlgShade(); }
+function showCopyDone() {
+  const d = cp.done;
+  if (!d) return;
+  $('#cpDoneT').textContent = d.stopped ? '■ Copying stopped' : d.files.length ? '✓ Copying done' : 'Copying done — nothing copied';
+  $('#cpDoneSum').innerHTML = `<b>${d.files.length}</b> file${d.files.length === 1 ? '' : 's'} copied to <b>${esc(d.target)}</b> in ${d.secs} s · ${esc(d.when)}`
+    + ` · ${d.lost.length ? `<span class="bad">${plural(d.lost.length, 'missing .nc / .pdf file')}</span> (see the other window)` : '<span class="ok">no .nc / .pdf missing</span>'}`;
+  $('#cpDoneTable').innerHTML = '<thead><tr><th>#</th><th>Part</th><th>File</th><th>Copied to</th></tr></thead><tbody>'
+    + (d.files.length ? d.files.map((f, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(f.part)}</td><td>${esc(f.name)}${f.how === 'dxf' ? ' <span class="warnc">(DXF instead)</span>' : ''}</td><td class="mono muted">${esc(f.to.slice(0, f.to.length - f.name.length - 1))}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No files were copied.</td></tr>') + '</tbody>';
+  $('#cpDoneMiss').innerHTML = d.miss.length ? `<b class="bad">Also not copied (${d.miss.length}):</b> ` + d.miss.map(m => `<span class="mono">${esc(m.part)}</span> ${m.type.toUpperCase()} <span class="muted">${esc(m.why)}</span>`).join(' · ') : '';
+  $('#cpDoneNote').textContent = '';
+  openDlg('cpDone');
+  $('#cpDoneOk').focus();
+}
+function showMissing() {
+  const d = cp.done;
+  if (!d) return;
+  $('#cpMissSum').innerHTML = d.lost.length
+    ? `<b class="bad">${d.lost.length}</b> .nc / .pdf file${d.lost.length === 1 ? ' was' : 's were'} not found, for <b>${plural(new Set(d.lost.map(m => m.part)).size, 'part')}</b>`
+    : '<span class="ok">Every part had its .nc and .pdf.</span>';
+  $('#cpMissTable').innerHTML = '<thead><tr><th>#</th><th>Part</th><th>Missing file</th><th>Note</th></tr></thead><tbody>'
+    + (d.lost.length ? d.lost.map((m, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(m.part)}</td><td><span class="ext ${m.type}">${m.type.toUpperCase()}</span></td><td class="${m.dxf ? 'warnc' : 'bad'}">${esc(m.note)}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">Nothing missing.</td></tr>') + '</tbody>';
+  $('#cpMissNote').textContent = '';
+  openDlg('cpMiss');
+  $('#cpMissOk').focus();
+}
+// Both windows after a copy: COPIED on the left, MISSING on the right (stacked on a narrow screen).
+function showCopyWindows() {
+  const both = cp.done && cp.done.lost.length;
+  document.body.classList.toggle('cpPair', !!both);
+  showCopyDone();
+  if (both) showMissing();
+}
+function wireListDlg(id, textFn, fileWord) {
+  const close = () => { $('#' + id).close(); document.body.classList.remove('cpPair'); syncDlgShade(); };
+  $('#' + id).addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
+  $('#' + id + 'Ok').onclick = close; $('#' + id + 'X').onclick = close;
+  $('#' + id + 'Copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(textFn()); $('#' + id + 'Note').textContent = 'List copied to the clipboard.'; }
+    catch (e) { $('#' + id + 'Note').textContent = 'The browser would not use the clipboard — use Save list.'; }
+  };
+  $('#' + id + 'Save').onclick = () => {
+    const a = document.createElement('a'), stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    a.href = URL.createObjectURL(new Blob([textFn()], { type: 'text/plain' }));
+    a.download = `${fileWord}-${(cp.done.job || stamp).replace(/[\\/:*?"<>|]+/g, '_')}.txt`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+}
+function wireCopyDone() {
+  wireListDlg('cpDone', copyListText, 'copied-files');
+  wireListDlg('cpMiss', missingListText, 'missing-files');
+  $('#cpShowList').onclick = () => { document.body.classList.remove('cpPair'); showCopyDone(); };
+  $('#cpShowMiss').onclick = () => { document.body.classList.remove('cpPair'); showMissing(); };
 }
 // Step 5: check the four boxes, then run copyPartsToDrive (P10).
 async function runCopy() {
@@ -171,7 +249,7 @@ async function runCopy() {
   if (!types.length) return fail('Step 3: type at least one file type.');
   if (!parts.length) return fail('Step 4: read a PDF or type the part numbers.');
   if (!(await ensurePerm(cp.target, 'readwrite'))) return fail(`Permission to write to “${esc(cp.target.name)}” was not given.`);
-  ls.set('types', $('#cpTypes').value.trim()); ls.set('dst', $('#cpDst').value.trim()); ls.set('src', $('#cpSrcTxt').value.trim());
+  ls.set('types1', $('#cpTypes').value.trim()); ls.set('dst', $('#cpDst').value.trim()); ls.set('src', $('#cpSrcTxt').value.trim());
   cp.running = true; lib.stop = false; lib.dirCache = new Map();
   $('#cpRun').disabled = true; $('#cpStop').hidden = false;
   cp.rows = [];
@@ -196,6 +274,15 @@ async function runCopy() {
     st.innerHTML = `${res.stopped ? '<span class="warnc">Stopped.</span> ' : ''}<b>${res.copied}</b> file${res.copied === 1 ? '' : 's'} copied to <b>${esc(res.dir.name)}</b> in ${((performance.now() - t0) / 1000).toFixed(1)} s`
       + (n('dxf') ? ` · <span class="warnc">${n('dxf')} DXF instead</span>` : '') + (n('fail') ? ` · <span class="bad">${n('fail')} failed</span>` : '')
       + (noneParts.length ? ` · <span class="bad">nothing found for ${esc(noneParts.join(', '))}</span>` : missParts.length ? ` · <span class="bad">missing: ${esc(missParts.join(', '))}</span>` : '');
+    const why = { missing: 'missing (no DXF either)', fail: 'could not write' };
+    cp.done = { files: res.files, target: res.dir === cp.target ? cp.target.name : cp.target.name + '\\' + res.dir.name,
+      secs: ((performance.now() - t0) / 1000).toFixed(1), when: new Date().toLocaleString(), stopped: !!res.stopped, job: $('#cpJobDir').checked ? $('#cpJob').value.trim() : '',
+      // every .nc / .pdf not found (a DXF may have gone instead) — the MISSING window
+      lost: cp.rows.filter(x => (x.type === 'nc' || x.type === 'pdf') && (x.how === 'missing' || x.how === 'dxf' || x.how === 'dxfdup'))
+        .map(x => ({ part: x.part, type: x.type, dxf: x.how !== 'missing', note: x.how === 'missing' ? 'not found — no DXF either' : 'not found — the DXF was copied instead' })),
+      miss: cp.rows.filter(x => (x.st === 'missing' && x.type !== 'nc' && x.type !== 'pdf') || x.st === 'fail' || x.st === 'wait').map(x => ({ part: x.part, type: x.type, why: x.st === 'fail' ? (x.err || why.fail) : x.st === 'wait' ? 'not copied (stopped)' : x.type === CONFIG.copy.fallbackType ? 'missing' : why.missing })) };
+    $('#cpShowList').hidden = false; $('#cpShowMiss').hidden = false;
+    showCopyWindows();
     log(`Copy to ${res.dir.name}: ${res.copied} files, ${n('dxf')} DXF instead, ${noneParts.length} part(s) not found${noneParts.length ? ' — ' + noneParts.join(', ') : ''}`, noneParts.length || n('fail') ? 'warn' : 'ok');
     reportProgress('Copy to drive', `${res.copied} files copied`, 1, true);
   } catch (e) {
@@ -211,8 +298,8 @@ function startCopyPage() {
   startToolPage('copy');
   $('#cpSrcTxt').value = ls.get('src', '');
   $('#cpDst').value = ls.get('dst', CONFIG.copy.defaultTarget);
-  $('#cpTypes').value = ls.get('types', CONFIG.copy.defaultTypes);
-  [['cpSrcTxt', 'src'], ['cpDst', 'dst'], ['cpTypes', 'types']].forEach(([id, k]) => $('#' + id).addEventListener('change', () => {
+  $('#cpTypes').value = ls.get('types1', CONFIG.copy.defaultTypes); // new key: DXF is in the default types now
+  [['cpSrcTxt', 'src'], ['cpDst', 'dst'], ['cpTypes', 'types1']].forEach(([id, k]) => $('#' + id).addEventListener('change', () => {
     ls.set(k, $('#' + id).value.trim());
     if (id === 'cpTypes') showTypes();
     if (id === 'cpDst') showTarget();
@@ -220,6 +307,7 @@ function startCopyPage() {
   $('#cpSrcLocate').onclick = locateSource;
   $('#cpDstPick').onclick = openTarget;
   wireCopyPartList();
+  wireCopyDone();
   $('#cpJob').addEventListener('input', () => { cp.jobTyped = true; });
   wireDropZone('cpDrop', 'cpFile', readCopyList);
   window.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readCopyList(f); }); // a drop anywhere on the page

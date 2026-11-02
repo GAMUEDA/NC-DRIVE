@@ -557,3 +557,17 @@
   .cpEmpty { padding: 10px; font-size: 12px; }
   .cpAddRow { margin-top: 6px; }
   .cpAddRow input.txt { flex: 1; max-width: none; text-align: left; }
+
+  .ver { font: 500 .62em "Share Tech Mono", monospace; letter-spacing: .04em; color: var(--muted); text-shadow: none; }
+  .cpDoneDlg { width: min(820px, 94vw); }
+  .cpDoneDlg .db { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+  .cpDoneSum { font-size: 14px; }
+  .cpDoneWrap { max-height: 55vh; overflow: auto; }
+  .cpDoneMiss { font-size: 12px; line-height: 1.6; }
+  dialog.cpDoneDlg[open] { position: fixed; inset: 0; margin: auto; z-index: 1001; }
+  body.cpDlgOpen::after { content: ""; position: fixed; inset: 0; z-index: 1000; background: rgba(1,6,12,.72); backdrop-filter: blur(2px); }
+  .cpMissDlg .dh h3 { color: var(--bad, #ff5d5d); }
+  @media (min-width: 1100px) {
+    body.cpPair #cpDone { margin: auto auto auto 2vw; width: 54vw; }
+    body.cpPair #cpMiss { margin: auto 2vw auto auto; width: 40vw; }
+  }

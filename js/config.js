@@ -25,7 +25,7 @@
      js/p7-report.js      P7  report rows, page, CSV                      reportData(), reportHtml(), reportCsv()
      js/p8-search.js      P8  part numbers → files in linked folders      searchLibrary(), bestPicks()
      js/p9-partslist.js   P9  parts list / work order → lines             readPartsList(), parsePartsRows()
-     js/p10-copy.js       P10 copy files, DXF when a type is missing      copyPartsToDrive(), planCopy()
+     js/p10-copy.js       P10 copy files (names 1…), DXF → DXF\ folder    copyPartsToDrive(), planCopy()
      js/p11-usb.js        P11 list / erase / write files on a stick       scanDrive(), eraseFiles(), writeJobToDrive()
      js/p12-dxfnc.js      P12 one .dxf → one .nc (no nesting)             dxfToNc()
      js/p13-turret.js     P13 turret strip DXF → AMADA programs -1…-4    turretPart(), turretPrograms()
@@ -40,6 +40,9 @@
    NCLink.debug = true on any page prints the messages between pages.
    ===================================================================================================== */
 const CONFIG = {
+  // ---- program version: add 1 on every upgrade (also VERSION.txt). Shown next to NC DRIVE on every page. ----
+  version: 21,
+
   // ---- machine beds (the 4' × 10' / 6' × 14' buttons) ----
   beds: [
     { name: "4' × 10' Bodor", w: 1219.2, h: 3048 },
@@ -124,7 +127,10 @@ const CONFIG = {
   },
 
   // ---- P10 copy to drive ----
-  copy: { defaultTarget: 'E:', defaultTypes: 'NC, PDF', fallbackType: 'dxf' },
+  copy: { defaultTarget: 'E:', defaultTypes: 'NC, PDF, DXF', fallbackType: 'dxf',
+    nameStarts: /^1/,             // only files whose name starts with "1" are copied
+    folderStarts: /^(1|amada)/i,  // folders of a part whose name starts with "1" or "Amada" are copied whole
+    dxfFolder: 'DXF' },           // .dxf files go in this folder on the target; .nc, .pdf and the folders go in its main folder
 
   // ---- P11 USB ----
   usb: { defaults: { show: 'all', sub: true }, // Erase USB options on first run; after that the last ones used are kept
@@ -187,3 +193,10 @@ const CONFIG = {
   layout: { header: 56, dock: 96, command: 130, listFrac: 0.25, rightFrac: 0.22, split: 0.58 },
   gaugeColors: ['#3d8fd6', '#2f9e5a', '#d6453d', '#e0802a', '#8a63d2', '#c7a514', '#1fa59a', '#d0559a'],
 };
+
+// Show the version next to the NC DRIVE name on every page (and in the window title).
+document.addEventListener('DOMContentLoaded', () => {
+  const v = 'v' + CONFIG.version;
+  document.querySelectorAll('.brand h1, .brandLink').forEach(el => el.insertAdjacentHTML('beforeend', ` <small class="ver">${v}</small>`));
+  if (!/\bv\d+\b/.test(document.title)) document.title += ' · ' + v;
+});
