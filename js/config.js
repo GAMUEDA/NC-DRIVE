@@ -41,7 +41,7 @@
    ===================================================================================================== */
 const CONFIG = {
   // ---- program version: add 1 on every upgrade (also VERSION.txt). Shown next to NC DRIVE on every page. ----
-  version: 22,
+  version: '22.1',
 
   // ---- machine beds (the 4' × 10' / 6' × 14' buttons) ----
   beds: [

@@ -19,4 +19,4 @@ The nesting follows nest_admin 5: grain (0°/180° or the whole nest at 90°/270
 
 ## Version
 
-The program version is `CONFIG.version` in `js/config.js` (shown next to NC DRIVE on every page) and `VERSION.txt`. Add 1 to both on every upgrade; each download zip carries the same number (`nc-drive-project_v22.zip`).
+The program version is `CONFIG.version` in `js/config.js` (shown next to NC DRIVE on every page) and `VERSION.txt`. Add 1 to both on every upgrade; each download zip carries the same number (`nc-drive-project_v22.1.zip`).

@@ -210,23 +210,30 @@ function showMissing() {
   openDlg('cpMiss');
   $('#cpMissOk').focus();
 }
-// Third column of the page: the copied files list, always on screen (the same list as the COPIED window).
+// Third column of the page: the parts copied by the last run, part numbers only (one line each, in copy order).
+const copiedParts = d => [...new Set(d.files.map(f => f.part))];
+function copiedPartsText() {
+  const d = cp.done;
+  if (!d) return '';
+  const parts = copiedParts(d);
+  return [`NC Drive v${CONFIG.version} · Copy to Drive · ${d.when}`, `${plural(parts.length, 'part')} copied to ${d.target}${d.stopped ? ' (stopped)' : ''}`, '',
+    ...parts.map((p, i) => `${String(i + 1).padStart(3)}  ${p}`)].join('\r\n');
+}
 function renderCopiedPanel() {
-  const d = cp.done, head = '<thead><tr><th>#</th><th>Part</th><th>File</th><th>Copied to</th></tr></thead><tbody>';
+  const d = cp.done, head = '<thead><tr><th>#</th><th>Part</th></tr></thead><tbody>';
   $('#cpListCopy').disabled = $('#cpListSave').disabled = !d;
   $('#cpListNote').textContent = '';
   if (!d) {
-    $('#cpListCount').textContent = ''; $('#cpListSum').innerHTML = ''; $('#cpListMiss').innerHTML = '';
-    $('#cpListTable').innerHTML = head + '<tr><td colspan="4" class="empty">The files copied by the last run are listed here, in order.</td></tr></tbody>';
+    $('#cpListCount').textContent = ''; $('#cpListSum').innerHTML = '';
+    $('#cpListTable').innerHTML = head + '<tr><td colspan="2" class="empty">The parts copied by the last run are listed here.</td></tr></tbody>';
     return;
   }
-  $('#cpListCount').textContent = String(d.files.length);
-  $('#cpListSum').innerHTML = `${d.stopped ? '<span class="warnc">Stopped.</span> ' : ''}<b>${d.files.length}</b> file${d.files.length === 1 ? '' : 's'} → <b>${esc(d.target)}</b> · ${d.secs} s · ${esc(d.when)}`
-    + (d.lost.length ? ` · <span class="bad">${plural(d.lost.length, 'missing .nc / .pdf')}</span>` : '');
+  const parts = copiedParts(d);
+  $('#cpListCount').textContent = String(parts.length);
+  $('#cpListSum').innerHTML = `${d.stopped ? '<span class="warnc">Stopped.</span> ' : ''}<b>${plural(parts.length, 'part')}</b> → <b>${esc(d.target)}</b> · ${esc(d.when)}`;
   $('#cpListTable').innerHTML = head
-    + (d.files.length ? d.files.map((f, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(f.part)}</td><td>${esc(f.name)}${f.how === 'dxf' ? ' <span class="warnc">(DXF instead)</span>' : ''}</td><td class="mono muted">${esc(f.to.slice(0, f.to.length - f.name.length - 1))}</td></tr>`).join('')
-      : '<tr><td colspan="4" class="empty">No files were copied.</td></tr>') + '</tbody>';
-  $('#cpListMiss').innerHTML = d.miss.length ? `<b class="bad">Also not copied (${d.miss.length}):</b> ` + d.miss.map(m => `<span class="mono">${esc(m.part)}</span> ${m.type.toUpperCase()} <span class="muted">${esc(m.why)}</span>`).join(' · ') : '';
+    + (parts.length ? parts.map((p, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(p)}</td></tr>`).join('')
+      : '<tr><td colspan="2" class="empty">No parts were copied.</td></tr>') + '</tbody>';
 }
 async function copyListToClipboard(textFn, noteEl) {
   try { await navigator.clipboard.writeText(textFn()); noteEl.textContent = 'List copied to the clipboard.'; }
@@ -258,8 +265,8 @@ function wireCopyDone() {
   wireListDlg('cpMiss', missingListText, 'missing-files');
   $('#cpShowList').onclick = () => { document.body.classList.remove('cpPair'); showCopyDone(); };
   $('#cpShowMiss').onclick = () => { document.body.classList.remove('cpPair'); showMissing(); };
-  $('#cpListCopy').onclick = () => cp.done && copyListToClipboard(copyListText, $('#cpListNote'));
-  $('#cpListSave').onclick = () => cp.done && saveListFile(copyListText, 'copied-files');
+  $('#cpListCopy').onclick = () => cp.done && copyListToClipboard(copiedPartsText, $('#cpListNote'));
+  $('#cpListSave').onclick = () => cp.done && saveListFile(copiedPartsText, 'copied-parts');
   renderCopiedPanel();
 }
 // Step 5: check the four boxes, then run copyPartsToDrive (P10).

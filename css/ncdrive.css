@@ -394,11 +394,19 @@
   /* ================= Copy to Drive: steps 1, 2, 3 in a row; then 3 columns (4 part numbers | 5 files processed | copied files list) ================= */
   #dlgCopy .steps { min-height: 100%; }
   .cpTop { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; align-items: start; }
-  .cpTop .step { padding: 10px 12px; border: 1px solid rgba(34,211,238,.2); background: rgba(34,211,238,.03); min-width: 0; height: 100%; }
+  /* divider lines like the main NC DRIVE screen: the thin --gap-line between the boxes */
+  .cpTop { gap: 0; padding-bottom: 14px; border-bottom: 2px solid var(--gap-line); }
+  .cpTop .step, .cpCols .cpCol { min-width: 0; height: 100%; padding: 0 16px; }
+  .cpTop .step:first-child, .cpCols .cpCol:first-child { padding-left: 0; }
+  .cpTop .step:last-child, .cpCols .cpCol:last-child { padding-right: 0; }
+  .cpTop .step + .step, .cpCols .cpCol + .cpCol { border-left: 2px solid var(--gap-line); }
+  /* bottom box: two lines only — the status line and the newest log line (scroll up for older ones) */
+  #dlgCopy .df { padding: 3px 16px; min-height: 0; }
+  #dlgCopy .toolLog { height: calc(12px * 1.5 + 6px); max-height: none; padding: 3px 16px; }
   .cpTop .step .row { flex-wrap: wrap; }
   .cpTop .step .row input.txt { flex: 1 1 160px; min-width: 0; }
   .cpTop .step .lb .note { display: block; font-weight: 400; margin-top: 2px; }
-  .cpCols { flex: 1 1 auto; min-height: 320px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.15fr); gap: 16px; }
+  .cpCols { flex: 1 1 auto; min-height: 320px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.7fr) minmax(0,.8fr); gap: 0; }
   .cpColBody #cpListWrap { flex: 1 1 auto; min-height: 180px; }
   .cpListSum { font-size: 12px; margin-bottom: 6px; }
   #cpListTable td.empty { color: var(--muted); font-style: italic; }
@@ -408,8 +416,8 @@
   .cpColBody #cpWrap { flex: 1 1 auto; min-height: 180px; }
   .cpColBody .row .note { flex: 1 1 100%; }
   #cpTable td.empty { color: var(--muted); font-style: italic; }
-  @media (max-width: 1100px) { .cpCols { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .cpCols > .cpCol:last-child { grid-column: 1 / -1; } }
-  @media (max-width: 860px) { .cpTop, .cpCols { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .cpCols { grid-template-columns: minmax(0,1fr) minmax(0,1fr); row-gap: 16px; } .cpCols > .cpCol:last-child { grid-column: 1 / -1; border-left: 0; padding: 14px 0 0; border-top: 2px solid var(--gap-line); } }
+  @media (max-width: 860px) { .cpTop, .cpCols { grid-template-columns: 1fr; row-gap: 14px; } .cpTop .step + .step, .cpCols .cpCol + .cpCol { border-left: 0; padding: 14px 0 0; border-top: 2px solid var(--gap-line); } }
 
   /* ================= Erase USB: drives, active drive, file list + preview, progress bar ================= */
   .usbActive { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid rgba(34,211,238,.35); background: rgba(34,211,238,.06); font-size: 12px; }
