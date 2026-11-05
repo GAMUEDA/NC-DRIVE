@@ -210,6 +210,35 @@ function showMissing() {
   openDlg('cpMiss');
   $('#cpMissOk').focus();
 }
+// Third column of the page: the copied files list, always on screen (the same list as the COPIED window).
+function renderCopiedPanel() {
+  const d = cp.done, head = '<thead><tr><th>#</th><th>Part</th><th>File</th><th>Copied to</th></tr></thead><tbody>';
+  $('#cpListCopy').disabled = $('#cpListSave').disabled = !d;
+  $('#cpListNote').textContent = '';
+  if (!d) {
+    $('#cpListCount').textContent = ''; $('#cpListSum').innerHTML = ''; $('#cpListMiss').innerHTML = '';
+    $('#cpListTable').innerHTML = head + '<tr><td colspan="4" class="empty">The files copied by the last run are listed here, in order.</td></tr></tbody>';
+    return;
+  }
+  $('#cpListCount').textContent = String(d.files.length);
+  $('#cpListSum').innerHTML = `${d.stopped ? '<span class="warnc">Stopped.</span> ' : ''}<b>${d.files.length}</b> file${d.files.length === 1 ? '' : 's'} → <b>${esc(d.target)}</b> · ${d.secs} s · ${esc(d.when)}`
+    + (d.lost.length ? ` · <span class="bad">${plural(d.lost.length, 'missing .nc / .pdf')}</span>` : '');
+  $('#cpListTable').innerHTML = head
+    + (d.files.length ? d.files.map((f, i) => `<tr><td class="mono muted">${i + 1}</td><td class="mono">${esc(f.part)}</td><td>${esc(f.name)}${f.how === 'dxf' ? ' <span class="warnc">(DXF instead)</span>' : ''}</td><td class="mono muted">${esc(f.to.slice(0, f.to.length - f.name.length - 1))}</td></tr>`).join('')
+      : '<tr><td colspan="4" class="empty">No files were copied.</td></tr>') + '</tbody>';
+  $('#cpListMiss').innerHTML = d.miss.length ? `<b class="bad">Also not copied (${d.miss.length}):</b> ` + d.miss.map(m => `<span class="mono">${esc(m.part)}</span> ${m.type.toUpperCase()} <span class="muted">${esc(m.why)}</span>`).join(' · ') : '';
+}
+async function copyListToClipboard(textFn, noteEl) {
+  try { await navigator.clipboard.writeText(textFn()); noteEl.textContent = 'List copied to the clipboard.'; }
+  catch (e) { noteEl.textContent = 'The browser would not use the clipboard — use Save list.'; }
+}
+function saveListFile(textFn, fileWord) {
+  const a = document.createElement('a'), stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+  a.href = URL.createObjectURL(new Blob([textFn()], { type: 'text/plain' }));
+  a.download = `${fileWord}-${(cp.done.job || stamp).replace(/[\\/:*?"<>|]+/g, '_')}.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 // Both windows after a copy: COPIED on the left, MISSING on the right (stacked on a narrow screen).
 function showCopyWindows() {
   const both = cp.done && cp.done.lost.length;
@@ -221,23 +250,17 @@ function wireListDlg(id, textFn, fileWord) {
   const close = () => { $('#' + id).close(); document.body.classList.remove('cpPair'); syncDlgShade(); };
   $('#' + id).addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); close(); } });
   $('#' + id + 'Ok').onclick = close; $('#' + id + 'X').onclick = close;
-  $('#' + id + 'Copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(textFn()); $('#' + id + 'Note').textContent = 'List copied to the clipboard.'; }
-    catch (e) { $('#' + id + 'Note').textContent = 'The browser would not use the clipboard — use Save list.'; }
-  };
-  $('#' + id + 'Save').onclick = () => {
-    const a = document.createElement('a'), stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
-    a.href = URL.createObjectURL(new Blob([textFn()], { type: 'text/plain' }));
-    a.download = `${fileWord}-${(cp.done.job || stamp).replace(/[\\/:*?"<>|]+/g, '_')}.txt`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  };
+  $('#' + id + 'Copy').onclick = () => copyListToClipboard(textFn, $('#' + id + 'Note'));
+  $('#' + id + 'Save').onclick = () => saveListFile(textFn, fileWord);
 }
 function wireCopyDone() {
   wireListDlg('cpDone', copyListText, 'copied-files');
   wireListDlg('cpMiss', missingListText, 'missing-files');
   $('#cpShowList').onclick = () => { document.body.classList.remove('cpPair'); showCopyDone(); };
   $('#cpShowMiss').onclick = () => { document.body.classList.remove('cpPair'); showMissing(); };
+  $('#cpListCopy').onclick = () => cp.done && copyListToClipboard(copyListText, $('#cpListNote'));
+  $('#cpListSave').onclick = () => cp.done && saveListFile(copyListText, 'copied-files');
+  renderCopiedPanel();
 }
 // Step 5: check the four boxes, then run copyPartsToDrive (P10).
 async function runCopy() {
@@ -282,6 +305,7 @@ async function runCopy() {
         .map(x => ({ part: x.part, type: x.type, dxf: x.how !== 'missing', note: x.how === 'missing' ? 'not found — no DXF either' : 'not found — the DXF was copied instead' })),
       miss: cp.rows.filter(x => (x.st === 'missing' && x.type !== 'nc' && x.type !== 'pdf') || x.st === 'fail' || x.st === 'wait').map(x => ({ part: x.part, type: x.type, why: x.st === 'fail' ? (x.err || why.fail) : x.st === 'wait' ? 'not copied (stopped)' : x.type === CONFIG.copy.fallbackType ? 'missing' : why.missing })) };
     $('#cpShowList').hidden = false; $('#cpShowMiss').hidden = false;
+    renderCopiedPanel();
     showCopyWindows();
     log(`Copy to ${res.dir.name}: ${res.copied} files, ${n('dxf')} DXF instead, ${noneParts.length} part(s) not found${noneParts.length ? ' — ' + noneParts.join(', ') : ''}`, noneParts.length || n('fail') ? 'warn' : 'ok');
     reportProgress('Copy to drive', `${res.copied} files copied`, 1, true);

@@ -1,4 +1,5 @@
-NC Drive v21
-Copy to Drive: a second window lists every missing .nc and .pdf file (Copy list / Save list)
+NC Drive v22
+Verdana font on every page; Copy to Drive: steps 1, 2, 3 in a row, then 4 | 5 | Copied files list in 3 columns
+v21: Copy to Drive: a second window lists every missing .nc and .pdf file (Copy list / Save list)
 v20: a pop-up when copying is done, with the list of every file copied, in order
 v19: only files named 1…, .dxf in a DXF folder, 1…/Amada folders copied whole
