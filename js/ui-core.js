@@ -12,7 +12,8 @@ const S = {
   pdfMats: [], // drawings read (P4): {name, material, raw, partNo, notStocked}
   groups: [], // last nest (P5): [{gauge, r:{sheets, skipped, bed, grid}, req}]
   gi: 0, si: 0, // selected sheet (group index, sheet index)
-  view: 'sheet', // 'sheet' | 'report'
+  view: 'sheet', // 'sheet' | 'report' | 'files'
+  loaded: [], // every file read by LOAD FILES: {name, ext, ok, note} — the Files summary in the Preview box
   bed: 0, sheetCustom: false,
   idc: 0, // part id counter
   stale: false, // parts or settings changed since the last nest

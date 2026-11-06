@@ -322,7 +322,7 @@ function armButton(b, armedText) {
 // CLEAR ALL PARTS
 // =====================================================================================================
 function clearAllParts() {
-  S.parts = []; S.pdfMats = []; S.groups = []; S.stale = false; zones = [];
+  S.parts = []; S.pdfMats = []; S.groups = []; S.loaded = []; S.stale = false; zones = [];
   $('#addInfo').textContent = '';
   renderParts(); renderSheets(); renderView();
   log('all parts cleared', 'ok');

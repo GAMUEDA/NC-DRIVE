@@ -12,6 +12,12 @@ function applyDrawingToParts(entry) {
 function partNotes(p) {
   return [p.removed && `${p.removed} stray removed`, p.bendRemoved && `${p.bendRemoved} bend line${p.bendRemoved > 1 ? 's' : ''} removed`, p.etchFound && `etch text found`, p.featSkipped && `${p.featSkipped} feature outline${p.featSkipped > 1 ? 's' : ''} skipped`, p._fixed && `gauge fixed by the laser rules`].filter(Boolean);
 }
+// Remember every file LOAD FILES reads, for the Files summary (one entry per file; a re-load replaces the old one).
+function noteLoaded(f, ok, note) {
+  const ext = (f.name.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase();
+  S.loaded = S.loaded.filter(x => x.name.toLowerCase() !== f.name.toLowerCase());
+  S.loaded.push({ name: f.name, ext, ok, note: note || '' });
+}
 async function handleFiles(files) {
   // PDFs first, so a drawing dropped together with its DXF is already known when the DXF arrives
   files.sort((a, b) => (/\.pdf$/i.test(b.name) ? 1 : 0) - (/\.pdf$/i.test(a.name) ? 1 : 0));
@@ -22,8 +28,9 @@ async function handleFiles(files) {
     const lower = f.name.toLowerCase();
     if (lower.endsWith('.pdf')) {
       const r = await readDrawingPdf(f);
-      if (r.error) { log(r.error, r.kind); continue; }
+      if (r.error) { log(r.error, r.kind); noteLoaded(f, false, r.error); continue; }
       const entry = r.entry;
+      noteLoaded(f, true, entry.material);
       S.pdfMats.push(entry);
       const hit = applyDrawingToParts(entry);
       log(`${f.name}: ${entry.material}${entry.raw ? ` (“${entry.raw}”)` : ''}${hit.length ? ` → ${hit.map(p => p.name).join(', ')}` : ' — waiting for its DXF'}`, entry.notStocked ? 'warn' : 'ok');
@@ -31,16 +38,17 @@ async function handleFiles(files) {
       if (hit.length) markStale();
       continue;
     }
-    if (!lower.endsWith('.dxf') && !lower.endsWith('.nc')) { log(`${f.name}: not a .dxf, .nc or .pdf — skipped`, 'warn'); continue; }
+    if (!lower.endsWith('.dxf') && !lower.endsWith('.nc')) { log(`${f.name}: not a .dxf, .nc or .pdf — skipped`, 'warn'); noteLoaded(f, false, 'not a .dxf, .nc or .pdf'); continue; }
     const name = f.name.replace(/\.(dxf|nc)$/i, '');
     const om = omitHitName(f.name);
-    if (om) { log(`${f.name}: ${om} is never programmed (laser rules) — skipped`, 'warn'); continue; }
-    if (S.parts.some(p => p.name.toLowerCase() === name.toLowerCase())) { log(`${name} is already loaded — change its quantity instead`, 'warn'); continue; }
+    if (om) { log(`${f.name}: ${om} is never programmed (laser rules) — skipped`, 'warn'); noteLoaded(f, false, 'never programmed (laser rules)'); continue; }
+    if (S.parts.some(p => p.name.toLowerCase() === name.toLowerCase())) { log(`${name} is already loaded — change its quantity instead`, 'warn'); if (!S.loaded.some(x => x.name.toLowerCase() === f.name.toLowerCase())) noteLoaded(f, true, 'already loaded'); continue; }
     const r = await loadPartFile(f, cleanOpts(), S.pdfMats);
-    if (r.error) { log(r.error, r.kind); continue; }
+    if (r.error) { log(r.error, r.kind); noteLoaded(f, false, r.error); continue; }
     const part = Object.assign({ id: 'p' + ++S.idc }, r.part);
     applyPartRules(part);
     S.parts.push(part);
+    noteLoaded(f, true, `${part.w.toFixed(1)} × ${part.h.toFixed(1)} mm${part.thick ? ' · ' + part.thick : ''}`);
     added++;
     const notes = partNotes(part);
     log(`${f.name}: ${part.w.toFixed(1)} × ${part.h.toFixed(1)} mm${part.thick ? ' · ' + part.thick : ''}${notes.length ? ' · ' + notes.join(', ') : ''}`, 'ok');
@@ -48,6 +56,8 @@ async function handleFiles(files) {
   if (added) markStale();
   if (files.length) finishProgress('Loading files', `${files.length} file${files.length > 1 ? 's' : ''} read · ${added} part${added === 1 ? '' : 's'} added`, true);
   renderParts();
+  // after a load, the Preview box shows the Files summary (1… and ON- in columns)
+  if (files.length) { S.view = 'files'; syncViewSeg(); renderView(); }
 }
 function wireFileDrop() {
   const fileInput = $('#fileInput'), drop = $('#drop');
@@ -184,6 +194,7 @@ async function nestAll() {
     };
     const res = await nestJob(S.parts, set, onProgress, onGroupDone);
     S.groups = res.groups; S.gi = 0; S.si = 0; S.stale = false;
+    if (S.view === 'files') { S.view = 'sheet'; syncViewSeg(); }
     S.nestMs = performance.now() - t0; S.nestedAt = new Date();
     S.nestSettings = { ...set, bed: CONFIG.beds[S.bed].name };
     log(`done in ${(S.nestMs / 1000).toFixed(2)} s — ${flatSheets().length} sheets total`, 'ok');
@@ -241,8 +252,48 @@ function wireSheetsPanel() {
 }
 
 // ---- CENTRE VIEW: one sheet, or the report (P7) ----
+// ---- FILES SUMMARY: what LOAD FILES read, in columns — names starting 1…, names starting ON-, then anything else ----
+const FILE_GROUPS = [
+  { key: 'one', title: 'Files starting “1”', test: n => /^1/.test(n) },
+  { key: 'on', title: 'Files starting “ON-”', test: n => /^on-/i.test(n) },
+  { key: 'other', title: 'Other files', test: () => true },
+];
+function filesSummaryHtml() {
+  const cols = FILE_GROUPS.map(g => ({ ...g, parts: new Map(), n: 0, pdf: 0, dxf: 0, nc: 0, bad: 0 }));
+  for (const f of S.loaded) {
+    const c = cols.find(g => g.test(f.name.trim()));
+    const base = f.name.replace(/\.(pdf|dxf|nc)$/i, '');
+    const k = base.toLowerCase();
+    if (!c.parts.has(k)) c.parts.set(k, { base, files: [] });
+    c.parts.get(k).files.push(f);
+    c.n++;
+    if (!f.ok) c.bad++;
+    else if (c[f.ext] !== undefined) c[f.ext]++;
+  }
+  const shown = cols.filter(c => c.key !== 'other' || c.n);
+  const cmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
+  const order = { pdf: 0, dxf: 1, nc: 2 };
+  const col = c => {
+    const rows = [...c.parts.values()].sort((a, b) => cmp(a.base, b.base)).map(p => {
+      const chips = p.files.sort((a, b) => (order[a.ext] ?? 9) - (order[b.ext] ?? 9)).map(f => `<span class="fsChip ${f.ok ? 'fs-' + esc(f.ext) : 'fs-bad'}" title="${esc(f.name + (f.note ? ' · ' + f.note : ''))}">${esc((f.ext || '?').toUpperCase())}</span>`).join('');
+      return `<li><span class="fsName">${esc(p.base)}</span><span class="fsChips">${chips}</span></li>`;
+    }).join('');
+    const tally = [c.pdf && `${c.pdf} PDF`, c.dxf && `${c.dxf} DXF`, c.nc && `${c.nc} NC`, c.bad && `<span style="color:var(--warn)">${c.bad} skipped</span>`].filter(Boolean).join(' · ');
+    return `<div class="fsCol fs-${c.key}"><div class="fsHead"><b>${esc(c.title)}</b><span class="fsCount mono">${c.parts.size}</span></div>
+      <div class="fsTally">${c.n ? `${c.n} file${c.n > 1 ? 's' : ''}${tally ? ' · ' + tally : ''}` : 'none loaded'}</div>
+      <ul class="fsList">${rows || '<li class="muted">—</li>'}</ul></div>`;
+  };
+  const tot = S.loaded.length;
+  return `<div class="fileSum"><div class="stats"><span><b>${tot}</b> file${tot === 1 ? '' : 's'} loaded</span>${cols.map(c => c.n && c.key !== 'other' ? `<span><b>${c.parts.size}</b> ${c.key === 'one' ? '“1…”' : '“ON-”'} part${c.parts.size === 1 ? '' : 's'}</span>` : '').join('')}${S.groups.length ? '<span style="margin-left:auto">Sheet / Report above to go back to the nest</span>' : ''}</div>
+    <div class="fsCols" style="--fs-n:${shown.length}">${shown.map(col).join('')}</div></div>`;
+}
 function renderView() {
   const v = $('#view');
+  if (S.view === 'files' || (!S.groups.length && S.loaded.length)) {
+    $('#mainTitle').textContent = 'Preview · loaded files';
+    v.innerHTML = S.loaded.length ? filesSummaryHtml() : '<div class="empty">No files loaded yet. Use <b>Load files…</b> to read .pdf, .dxf or .nc files.</div>';
+    return;
+  }
   if (!S.groups.length) {
     $('#mainTitle').textContent = 'Preview';
     v.innerHTML = `<div class="empty">${S.parts.length ? 'Set quantities and gauges, then press <b>Nest</b>.' : 'Load DXF files on the left (add the drawing PDFs too and the gauge is read from them).<br>Set quantities, then press <b>Nest</b>.<br>Each sheet gets its own .nc file, and the report sheet lists everything.'}</div>`;

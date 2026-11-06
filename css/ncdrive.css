@@ -592,3 +592,24 @@
     body.cpPair #cpDone { margin: auto auto auto 2vw; width: 54vw; }
     body.cpPair #cpMiss { margin: auto 2vw auto auto; width: 40vw; }
   }
+
+  /* ================= v23.1 · Preview → Files summary (LOAD FILES): 1… | ON- | other, in columns ================= */
+  .fileSum { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .fsCols { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--fs-n, 2), minmax(0, 1fr)); gap: 12px; }
+  .fsCol { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,.18); }
+  .fsHead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 10px 2px; font-size: 13px; }
+  .fsHead b { color: var(--ink); letter-spacing: .04em; font-weight: 600; }
+  .fsCount { color: var(--accent); font-size: 18px; text-shadow: 0 0 6px rgba(34,211,238,.5); }
+  .fs-on .fsCount { color: var(--accent2); text-shadow: 0 0 6px rgba(255,138,61,.5); }
+  .fsTally { color: var(--muted); font-size: 11px; padding: 0 10px 6px; border-bottom: 1px solid var(--line); }
+  .fsList { list-style: none; margin: 0; padding: 4px 0; overflow: auto; flex: 1; min-height: 0; }
+  .fsList li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 3px 10px; font-size: 12px; }
+  .fsList li:nth-child(even) { background: rgba(255,255,255,.03); }
+  .fsName { font-family: Consolas, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fsChips { display: inline-flex; gap: 4px; flex: none; }
+  .fsChip { font-size: 10px; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+  .fsChip.fs-pdf { color: #f87171; border-color: rgba(248,113,113,.5); }
+  .fsChip.fs-dxf { color: var(--accent); border-color: rgba(34,211,238,.5); }
+  .fsChip.fs-nc { color: var(--ok); border-color: currentColor; }
+  .fsChip.fs-bad { color: var(--warn); border-style: dashed; text-decoration: line-through; }
+  @media (max-width: 700px) { .fsCols { grid-template-columns: 1fr; } }
