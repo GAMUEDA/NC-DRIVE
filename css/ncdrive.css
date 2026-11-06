@@ -488,6 +488,10 @@
   .dxDrop { flex: 1 1 260px; padding: 14px; }
   .dxOpts .optGroup { display: flex; flex-wrap: wrap; gap: 4px 14px; }
   .dxOpts .chk { margin: 0; }
+  .dxLead { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12px; color: var(--muted); padding-top: 4px; border-top: 1px dashed rgba(34,211,238,.25); }
+  .dxLead b { color: var(--accent); font-weight: 600; }
+  .dxLead label { display: inline-flex; gap: 4px; align-items: center; }
+  .dxLead input.num { width: 58px; text-align: right; }
   .dxPartBox { flex: 0 1 380px; display: flex; flex-direction: column; gap: 4px; }
   .dxPartBox .lb { font-size: 12px; font-weight: 600; }
   .dxPartBox .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }

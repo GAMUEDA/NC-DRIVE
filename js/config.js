@@ -41,7 +41,7 @@
    ===================================================================================================== */
 const CONFIG = {
   // ---- program version: add 1 on every upgrade (also VERSION.txt). Shown next to NC DRIVE on every page. ----
-  version: '22.1',
+  version: '23',
 
   // ---- machine beds (the 4' × 10' / 6' × 14' buttons) ----
   beds: [
@@ -99,6 +99,8 @@ const CONFIG = {
     markOff: ['M10', 'M12'],
     decimals: 3,
     stitchTol: 0.05, // ends closer than this join into one contour
+    // DXF to NC: lead-in / lead-out on the outer perimeter only (holes are cut as before). mm and degrees.
+    lead: { length: 1.0, angle: 90, endGap: 0.5, leadOut: 0 },
     lineEnd: '\r\n',
   },
 

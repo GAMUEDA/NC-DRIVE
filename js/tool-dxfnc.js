@@ -13,6 +13,14 @@ const dx = { rows: [], sel: -1, busy: false, usb: null, folder: null };
 // rows: [{file, nc, working}] — nc = null until converted, else {error} or {w, h, notes, turret, files:[{name, data, kind, info}]}
 const DX_OPT_IDS = ['dxClean', 'dxBend', 'dxEtch', 'dxFeat']; // nest_admin 5 default: every one on
 
+// laser lead-in on the outer perimeter: box id → CONFIG.nc.lead key (saved in localStorage as 'lead.<key>')
+const DX_LEAD = { dxLeadIn: 'length', dxLeadAng: 'angle', dxEndGap: 'endGap', dxLeadOut: 'leadOut' };
+function dxLead() {
+  const out = {};
+  for (const [id, k] of Object.entries(DX_LEAD)) { const v = parseFloat($('#' + id).value); out[k] = isFinite(v) && v >= 0 ? v : CONFIG.nc.lead[k]; }
+  out.angle = Math.min(out.angle, 90);
+  return out;
+}
 const dxOpts = () => ({ clean: $('#dxClean').checked, bend: $('#dxBend').checked, etch: $('#dxEtch').checked, feat: $('#dxFeat').checked });
 const kb = n => (n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB');
 const okRows = () => dx.rows.filter(r => r.nc && !r.nc.error);
@@ -81,7 +89,7 @@ function addDxf(files) {
 async function convertDxf(file, opts) {
   const tpl = turretTemplateFor(file.name);
   if (!tpl) {
-    const r = await dxfToNc(file, opts);
+    const r = await dxfToNc(file, opts, dxLead());
     if (r.error) return r;
     return { w: r.w, h: r.h, notes: r.notes, files: [{ name: r.ncName, data: r.text, kind: 'nc', info: `${r.pierces} pierces · ${(r.cutLen / 1000).toFixed(2)} m cut${r.openCount ? ` · <span class="warnc">${r.openCount} open</span>` : ''}` }], laser: r };
   }
@@ -166,13 +174,19 @@ function optionsChanged() {
   if (!dx.rows.length) return;
   dx.rows.forEach(r => (r.nc = null));
   $('#dxProg').hidden = true;
-  $('#dxStatus').innerHTML = 'Clean-up changed. Press <b>RUN CONVERSION</b> to make the files again.';
+  $('#dxStatus').innerHTML = 'Options changed. Press <b>RUN CONVERSION</b> to make the files again.';
   renderDx();
 }
 function dxDefaults() {
   const changed = DX_OPT_IDS.filter(id => !$('#' + id).checked);
   changed.forEach(id => ($('#' + id).checked = true));
-  log('clean-up set to the nest_admin 5 defaults (all on)', 'ok');
+  for (const [id, k] of Object.entries(DX_LEAD)) {
+    const d = String(CONFIG.nc.lead[k]);
+    if (parseFloat($('#' + id).value) !== CONFIG.nc.lead[k]) changed.push(id);
+    $('#' + id).value = k === 'angle' ? d : CONFIG.nc.lead[k].toFixed(1);
+    ls.set('lead.' + k, d);
+  }
+  log(`clean-up set to the nest_admin 5 defaults (all on); lead-in ${CONFIG.nc.lead.length} mm at ${CONFIG.nc.lead.angle}°, end ${CONFIG.nc.lead.endGap} mm short, lead-out ${CONFIG.nc.lead.leadOut || 'none'}`, 'ok');
   if (changed.length) optionsChanged();
 }
 function clearDx(openPicker) {
@@ -265,6 +279,11 @@ function startDxfNcPage() {
   zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); zone.classList.remove('over'); addDxf(e.dataTransfer.files); });
   window.addEventListener('drop', e => { if (e.dataTransfer.files.length) addDxf(e.dataTransfer.files); }); // a drop anywhere on the page
   DX_OPT_IDS.forEach(id => $('#' + id).addEventListener('change', optionsChanged));
+  for (const [id, k] of Object.entries(DX_LEAD)) {
+    const el = $('#' + id), d = CONFIG.nc.lead[k];
+    el.value = ls.get('lead.' + k, k === 'angle' ? String(d) : d.toFixed(1));
+    el.addEventListener('change', () => { ls.set('lead.' + k, el.value.trim()); log(`lead-in: ${Object.entries(dxLead()).map(([a, b]) => a + ' ' + b).join(', ')}`); optionsChanged(); });
+  }
   $('#dxDefaults').onclick = dxDefaults;
   $('#dxConvert').onclick = convertAll;
   $('#dxFind').onclick = () => !dx.busy && findPartDxf();
@@ -301,5 +320,5 @@ function startDxfNcPage() {
   renderDx();
 }
 
-window.NCDriveTool = { CONFIG, process: { dxfToNc, makeSheetNc, loadPartFile, convertAll, convertDxf, findPartDxf, omitHitName, turretPart, turretPrograms, turretReportPdf }, dx, link: NCLink };
+window.NCDriveTool = { CONFIG, process: { dxfToNc, dxLead, applyLead, makeSheetNc, loadPartFile, convertAll, convertDxf, findPartDxf, omitHitName, turretPart, turretPrograms, turretReportPdf }, dx, link: NCLink };
 startDxfNcPage();

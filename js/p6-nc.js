@@ -90,7 +90,7 @@ function entitiesToLoops(entities) {
       }
   }
   const all = loops.concat(stitchSegs(segs, CONFIG.nc.stitchTol));
-  all.forEach(l => (l.area = Math.abs(loopSignedArea(l.segs))));
+  all.forEach(l => (l.area = Math.abs(polyArea(segsPolyline(l.segs))))); // arcs counted (a full circle is not area 0)
   all.sort((a, b) => a.area - b.area); // holes first, outer profile last
   return all;
 }
@@ -109,8 +109,122 @@ function fmtInc(v) {
   return s.includes('.') ? s : s + '.0';
 }
 
+// ---- lead-in / end gap / lead-out on the outer perimeter ----
+// Arc sweep (radians, > 0) from p to q around c in the given direction; p == q is a full circle.
+function arcSweep(p, q, c, ccw) {
+  const a0 = Math.atan2(p.y - c.cy, p.x - c.cx), a1 = Math.atan2(q.y - c.cy, q.x - c.cx);
+  let sw = ccw ? a1 - a0 : a0 - a1;
+  if (sw <= 1e-9) sw += 2 * Math.PI;
+  return sw;
+}
+// pts ([{x,y,arc}], pts[0] = start) → segments [{p0, p1, arc, len}]
+function ptsToSegs(pts) {
+  const out = [];
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = { x: pts[i - 1].x, y: pts[i - 1].y }, p1 = { x: pts[i].x, y: pts[i].y }, arc = pts[i].arc;
+    const len = arc ? Math.hypot(p0.x - arc.cx, p0.y - arc.cy) * arcSweep(p0, p1, arc, arc.ccw) : Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    out.push({ p0, p1, arc, len });
+  }
+  return out;
+}
+const segsToPts = segs => [{ x: segs[0].p0.x, y: segs[0].p0.y, arc: null }].concat(segs.map(s => ({ x: s.p1.x, y: s.p1.y, arc: s.arc })));
+// Points along a segment list, arcs broken into short chords (for area and inside tests).
+function segsPolyline(segs) {
+  const out = [[segs[0].p0.x, segs[0].p0.y]];
+  for (const s of segs) {
+    if (s.arc) {
+      const r = Math.hypot(s.p0.x - s.arc.cx, s.p0.y - s.arc.cy), sw = arcSweep(s.p0, s.p1, s.arc, s.arc.ccw);
+      const a0 = Math.atan2(s.p0.y - s.arc.cy, s.p0.x - s.arc.cx), n = Math.max(4, Math.ceil(sw / (Math.PI / 18)));
+      for (let k = 1; k <= n; k++) { const a = a0 + (s.arc.ccw ? 1 : -1) * (sw * k) / n; out.push([s.arc.cx + r * Math.cos(a), s.arc.cy + r * Math.sin(a)]); }
+    } else out.push([s.p1.x, s.p1.y]);
+  }
+  return out;
+}
+function polyArea(pl) { let a = 0; for (let i = 0; i < pl.length; i++) { const p = pl[i], q = pl[(i + 1) % pl.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; }
+function pointInPoly(x, y, pl) {
+  let inside = false;
+  for (let i = 0, j = pl.length - 1; i < pl.length; j = i++) {
+    const [xi, yi] = pl[i], [xj, yj] = pl[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+// Unit tangent (direction of travel) of a segment at its start (at = 0) or its end (at = 1).
+function segTangent(s, at) {
+  if (!s.arc) { const dx = s.p1.x - s.p0.x, dy = s.p1.y - s.p0.y, d = Math.hypot(dx, dy) || 1; return { x: dx / d, y: dy / d }; }
+  const p = at ? s.p1 : s.p0, rx = p.x - s.arc.cx, ry = p.y - s.arc.cy, r = Math.hypot(rx, ry) || 1;
+  return s.arc.ccw ? { x: -ry / r, y: rx / r } : { x: ry / r, y: -rx / r };
+}
+// Outer perimeter(s) of a part: closed loops that sit inside no other closed loop. → Set of loops
+function outerLoops(loops) {
+  const closed = loops.filter(l => l.closed && l.segs.length);
+  const polys = closed.map(l => segsPolyline(l.segs));
+  const outer = new Set();
+  closed.forEach((l, i) => {
+    const [x, y] = polys[i][0];
+    if (!closed.some((m, j) => j !== i && m.area > l.area && pointInPoly(x, y, polys[j]))) outer.add(l);
+  });
+  return outer;
+}
+// One outer contour (sheet coordinates) → {pts, leadOut}: starts on the middle of its longest straight edge (else
+// where it was), the pierce point lead.length mm away on the scrap side at lead.angle° to the contour (90 = square),
+// the cut stops lead.endGap mm short of the start, then an optional straight lead-out of lead.leadOut mm.
+function applyLead(pts, lead) {
+  let segs = ptsToSegs(pts);
+  if (!segs.length) return { pts, leadOut: null };
+  const perim = segs.reduce((a, s) => a + s.len, 0);
+  // start on the middle of the longest straight edge
+  let bi = -1;
+  segs.forEach((s, i) => { if (!s.arc && (bi < 0 || s.len > segs[bi].len)) bi = i; });
+  if (bi >= 0 && segs[bi].len > 2 * Math.max(lead.endGap, 0.01)) {
+    const s = segs[bi], m = { x: (s.p0.x + s.p1.x) / 2, y: (s.p0.y + s.p1.y) / 2 };
+    const a = { p0: s.p0, p1: m, arc: null, len: s.len / 2 }, b = { p0: m, p1: s.p1, arc: null, len: s.len / 2 };
+    segs = [b].concat(segs.slice(bi + 1), segs.slice(0, bi), [a]);
+  }
+  const ccwLoop = polyArea(segsPolyline(segs)) > 0;
+  const outN = t => (ccwLoop ? { x: t.y, y: -t.x } : { x: -t.y, y: t.x }); // scrap side of the travel direction
+  // end gap: take lead.endGap mm off the end of the path (never more than half the perimeter)
+  let gap = Math.min(Math.max(lead.endGap || 0, 0), perim / 2);
+  while (gap > 1e-9 && segs.length > 1) {
+    const s = segs[segs.length - 1];
+    if (s.len <= gap + 1e-9) { segs.pop(); gap -= s.len; continue; }
+    const f = (s.len - gap) / s.len;
+    if (s.arc) {
+      const r = Math.hypot(s.p0.x - s.arc.cx, s.p0.y - s.arc.cy), a0 = Math.atan2(s.p0.y - s.arc.cy, s.p0.x - s.arc.cx);
+      const a = a0 + (s.arc.ccw ? 1 : -1) * arcSweep(s.p0, s.p1, s.arc, s.arc.ccw) * f;
+      segs[segs.length - 1] = { p0: s.p0, p1: { x: s.arc.cx + r * Math.cos(a), y: s.arc.cy + r * Math.sin(a) }, arc: s.arc, len: s.len - gap };
+    } else segs[segs.length - 1] = { p0: s.p0, p1: { x: s.p0.x + (s.p1.x - s.p0.x) * f, y: s.p0.y + (s.p1.y - s.p0.y) * f }, arc: null, len: s.len - gap };
+    gap = 0;
+  }
+  if (segs.length === 1 && segs[0].arc && gap > 1e-9) {
+    // a full circle: shorten its single arc
+    const s = segs[0], r = Math.hypot(s.p0.x - s.arc.cx, s.p0.y - s.arc.cy), a0 = Math.atan2(s.p0.y - s.arc.cy, s.p0.x - s.arc.cx);
+    const a = a0 + (s.arc.ccw ? 1 : -1) * (s.len - gap) / r;
+    segs[0] = { p0: s.p0, p1: { x: s.arc.cx + r * Math.cos(a), y: s.arc.cy + r * Math.sin(a) }, arc: s.arc, len: s.len - gap };
+  }
+  const out = segsToPts(segs);
+  // lead-in: pierce off the contour, then a straight line onto the start point
+  const L = Math.max(lead.length || 0, 0);
+  if (L > 1e-9) {
+    const t = segTangent(segs[0], 0), n = outN(t), ang = ((lead.angle == null ? 90 : lead.angle) * Math.PI) / 180;
+    const p = { x: segs[0].p0.x + L * (Math.sin(ang) * n.x - Math.cos(ang) * t.x), y: segs[0].p0.y + L * (Math.sin(ang) * n.y - Math.cos(ang) * t.y) };
+    out.unshift({ x: p.x, y: p.y, arc: null });
+  }
+  // lead-out: straight off the end, square to the contour, onto the scrap side
+  let leadOut = null;
+  const LO = Math.max(lead.leadOut || 0, 0);
+  if (LO > 1e-9) {
+    const last = segs[segs.length - 1], n = outN(segTangent(last, 1));
+    leadOut = { x: last.p1.x + LO * n.x, y: last.p1.y + LO * n.y };
+  }
+  return { pts: out, leadOut };
+}
+
 // ---- one sheet → G-code ----
-function makeSheetNc(sheet) {
+// opts.lead = {length, angle, endGap, leadOut} (mm, degrees) puts a lead-in / end gap / lead-out on each part's
+// outer perimeter (DXF to NC); without it every contour is cut start-to-start as before.
+function makeSheetNc(sheet, opts) {
+  const lead = opts && opts.lead;
   const C = CONFIG.nc, L = [];
   let cur = [0, 0], openCount = 0, pierces = 0, cutLen = 0;
   const rapid = (x, y) => { L.push(`G00X${fmtInc(x - cur[0])}Y${fmtInc(y - cur[1])}`); cur = [x, y]; };
@@ -128,7 +242,7 @@ function makeSheetNc(sheet) {
     cur = [x, y];
   };
   // one contour: rapid to its start, switch on, follow it, switch off
-  const emitLoop = (pts, comp, closed, onCodes, offCodes) => {
+  const emitLoop = (pts, comp, closed, onCodes, offCodes, leadOut) => {
     if (!pts.length) return;
     if (!closed) openCount++;
     pierces++;
@@ -136,6 +250,7 @@ function makeSheetNc(sheet) {
     if (comp) L.push(C.compOn);
     onCodes.forEach(c => L.push(c));
     for (let i = 1; i < pts.length; i++) { const s = pts[i]; s.arc ? arcTo(s.x, s.y, s.arc.cx, s.arc.cy, s.arc.ccw) : lineTo(s.x, s.y); }
+    if (leadOut) lineTo(leadOut.x, leadOut.y);
     offCodes.forEach(c => L.push(c));
     if (comp) L.push(C.compOff);
   };
@@ -168,7 +283,13 @@ function makeSheetNc(sheet) {
       continue;
     }
     for (const loop of buildEtchLoops(p)) emitLoop(loopPts(loop, T), false, true, C.markOn, C.markOff);
-    for (const loop of buildLoops(p)) emitLoop(loopPts(loop, T), true, loop.closed, C.cutOn, C.cutOff);
+    const loops = buildLoops(p), outer = lead ? outerLoops(loops) : null;
+    for (const loop of loops) {
+      if (outer && outer.has(loop)) {
+        const r = applyLead(loopPts(loop, T), lead);
+        emitLoop(r.pts, true, true, C.cutOn, C.cutOff, r.leadOut);
+      } else emitLoop(loopPts(loop, T), true, loop.closed, C.cutOn, C.cutOff);
+    }
   }
   // skeleton: a straight strip cut, open by design (not a fault). Section lines are only drawn, never cut.
   for (const cut of (sheet.skeleton || []).filter(c => !c.section)) emitLoop([{ x: cut.x0, y: cut.y, arc: null }, { x: cut.x1, y: cut.y, arc: null }], false, true, C.cutOn, C.cutOff);
