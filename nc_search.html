@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NC Search · NC Drive</title>
 <!-- P8 NC Search — runs on its own; links to index.html when it is open (js/link.js). -->
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <link href="css/ncdrive.css" rel="stylesheet">
 </head>
 <body class="toolPage">
@@ -41,7 +40,7 @@ addEventListener('load', function () {
   var jsOk = typeof CONFIG !== 'undefined';
   if (cssOk && jsOk) return;
   var miss = [cssOk ? '' : 'css/ncdrive.css', jsOk ? '' : 'js/ files'].filter(Boolean).join(' and ');
-  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Segoe UI,system-ui,sans-serif;overflow:auto';
+  document.body.style.cssText = 'margin:0;height:100vh;display:grid;place-items:center;background:#03080f;color:#d4f1fb;font:15px/1.6 Verdana,Geneva,Tahoma,sans-serif;overflow:auto';
   document.body.innerHTML = '<div style="max-width:620px;padding:28px 32px;border:1px solid #22d3ee;box-shadow:0 0 24px rgba(34,211,238,.3);background:#07121d">'
     + '<h1 style="margin:0 0 10px;font-size:22px;letter-spacing:.12em">NC <span style="color:#ff8a3d">DRIVE</span></h1>'
     + '<p style="margin:0 0 10px;color:#ffb020">This page could not load ' + miss + ', so the screen cannot be drawn.</p>'

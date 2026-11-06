@@ -1,6 +1,8 @@
 /* =====================================================================================================
    P8 · NC SEARCH — find part files by part number in the linked parts folders (Edge / Chrome only)
-   searchLibrary(terms, {exts, progress, maxDepth}) → {found:[{term, name, path, ext, handle, file, old}], dirs, stopped}
+   searchLibrary(terms, {exts, progress, maxDepth, dirs}) → {found:[{term, name, path, ext, handle, file, old}], folders, dirs, stopped}
+     opt.dirs(name, own) → true to also return that folder in folders:[{term, name, path, handle}] (own = its name carries
+     the term; folders with AMADA in the name are offered too, but never searched inside)
    bestPicks(found, term) → default choice: newest current .NC, else newest .DXF (flat pattern first), plus newest PDF
    newestFile(list, ext)  → newest file of one type (current folders before old/backup ones)
    The linked folders are remembered in the browser (folders.js), so every page shares them.
@@ -12,7 +14,7 @@ async function listDir(h) {
   if (lib.dirCache.has(h)) return lib.dirCache.get(h);
   const out = [];
   for await (const e of h.values()) {
-    if (e.kind === 'directory' && (CONFIG.search.neverOpen.test(e.name) || /^[.$~]/.test(e.name))) continue; // folders with AMADA in the name are never opened
+    if (e.kind === 'directory' && /^[.$~]/.test(e.name)) continue;
     out.push(e);
   }
   lib.dirCache.set(h, out);
@@ -33,7 +35,7 @@ async function addRoot(h) {
 // everything inside it ("14034 - Bracket/flat.dxf" belongs to 14034).
 async function searchLibrary(terms, opt) {
   opt = opt || {};
-  const exts = opt.exts || CONFIG.search.exts, M = terms.map(t => ({ t, m: termMatcher(t) })), found = [];
+  const exts = opt.exts || CONFIG.search.exts, M = terms.map(t => ({ t, m: termMatcher(t) })), found = [], folders = [];
   if (!lib.roots.length) throw new Error('Link a parts folder first.');
   for (const r of lib.roots) if (!(await ensurePerm(r.handle, 'read'))) throw new Error(`Permission to read “${r.name}” was not given.`);
   const queue = lib.roots.map(r => ({ h: r.handle, path: r.name, depth: 0, inh: [] }));
@@ -51,12 +53,16 @@ async function searchLibrary(terms, opt) {
         if (!m || !exts.includes(m[1].toLowerCase())) continue;
         for (const { t, m: f } of M)
           if (cur.inh.includes(t) || f(e.name)) found.push({ term: t, name: e.name, path: cur.path + '/' + e.name, ext: m[1].toLowerCase(), handle: e, old: CONFIG.search.oldFolder.test(cur.path + '/' + e.name) });
-      } else if (cur.depth < (opt.maxDepth || CONFIG.search.maxDepth))
-        queue.push({ h: e, path: cur.path + '/' + e.name, depth: cur.depth + 1, inh: cur.inh.concat(M.filter(x => x.m(e.name) && !cur.inh.includes(x.t)).map(x => x.t)) });
+      } else {
+        const own = M.filter(x => x.m(e.name) && !cur.inh.includes(x.t)).map(x => x.t), path = cur.path + '/' + e.name;
+        if (opt.dirs) for (const t of own.concat(cur.inh)) if (opt.dirs(e.name, own.includes(t))) folders.push({ term: t, name: e.name, path, handle: e });
+        if (CONFIG.search.neverOpen.test(e.name)) continue; // folders with AMADA in the name are never searched inside
+        if (cur.depth < (opt.maxDepth || CONFIG.search.maxDepth)) queue.push({ h: e, path, depth: cur.depth + 1, inh: cur.inh.concat(own) });
+      }
     }
   }
   for (const f of found) { try { f.file = await f.handle.getFile(); } catch (e) { f.file = null; } }
-  return { found: found.filter(f => f.file), dirs, stopped: lib.stop };
+  return { found: found.filter(f => f.file), folders, dirs, stopped: lib.stop };
 }
 
 function bestPicks(found, term) {

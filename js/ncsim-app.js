@@ -240,7 +240,7 @@ function niceStep(){ const target=90/view.scale; for(const s of [0.01,0.025,0.05
 function drawGrid(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   const step=niceStep(), [x0,y1]=toWorld(0,0), [x1,y0]=toWorld(W,H);
-  ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.fillStyle=C.gtext; ctx.font='10px "IBM Plex Mono", monospace';
+  ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.fillStyle=C.gtext; ctx.font='10px Verdana, Geneva, Tahoma, sans-serif';
   const d=step<0.05?3:step<1?2:0;
   ctx.beginPath();
   for(let x=Math.ceil(x0/step)*step;x<=x1;x+=step){ const sx=Math.round(W/2+(x-view.cx)*view.scale)+.5; ctx.moveTo(sx,0);ctx.lineTo(sx,H); }
