@@ -56,7 +56,7 @@
         </g></svg></div>
       <div id="viewHead">
         <h2 id="mainTitle">Preview</h2>
-        <div class="viewCtl"><label class="spinCtl" title="Bulls-eye speed: left = slower (all the way = stopped), right = faster"><span class="spinIco" aria-hidden="true">◎</span><input type="range" id="spinSpeed" min="0" max="10" step="1" value="4" aria-label="Bulls-eye speed"><span class="mono" id="spinVal">1×</span></label><div class="seg" id="viewSeg"><button data-v="sheet" class="on">Sheet</button><button data-v="report">Report</button><button data-v="files" title="Summary of the loaded files: names starting 1… and ON-">Files</button></div></div>
+        <div class="viewCtl"><label class="spinCtl" title="Bulls-eye speed: left = slower (all the way = stopped), right = faster"><span class="spinIco" aria-hidden="true">◎</span><input type="range" id="spinSpeed" min="0" max="10" step="1" value="4" aria-label="Bulls-eye speed"><span class="mono" id="spinVal">1×</span></label><div class="seg" id="viewSeg"><button data-v="sheet" class="on">Sheet</button><button data-v="report">Report</button><button data-v="files" title="Part numbers read from the loaded PDFs, split into 1… and ON… columns">Files</button></div></div>
       </div>
       <div id="view"><div class="empty">Load DXF files on the left (add the drawing PDFs too and the gauge is read from them).<br>Set quantities, then press <b>Nest</b>.<br>Each sheet gets its own .nc file, and the report sheet lists everything.</div></div>
     </div>
@@ -200,6 +200,7 @@
 <script src="js/p2-load.js"></script>
 <script src="js/p3-clean.js"></script>
 <script src="js/p4-pdf.js"></script>
+<script src="js/p9-partslist.js"></script>
 <script src="js/p5-nest.js"></script>
 <script src="js/p6-nc.js"></script>
 <script src="js/p7-report.js"></script>

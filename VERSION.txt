@@ -1,5 +1,5 @@
 NC Drive v23.1
-LOAD FILES: after reading the PDF / DXF / NC files, the Preview box shows a Files summary in columns — names starting "1" and names starting "ON-" (plus Other if any), each name with its PDF / DXF / NC tags and counts; skipped files show struck through. Sheet / Report / Files buttons switch views; Nest goes back to the sheet.
+LOAD FILES: every PDF loaded is read and the part numbers listed inside it (work order table, nest report "Part list", drawing) are itemized in the Preview box, split into columns: part numbers starting "1" and part numbers starting "ON". Each shows its quantity (summed over the PDFs) and whether its DXF / NC is loaded; loaded DXF / NC files no PDF lists get their own column. Files button next to Sheet / Report; Nest goes back to the sheet.
 v23: DXF to NC: laser outer perimeter gets a lead-in (1.0 mm at 90°, starts mid longest edge), stops 0.5 mm short, lead-out 0 — all four editable next to Defaults; round parts now cut holes before the outer circle
 Copy to Drive: divider lines between the boxes like the main screen, copied list shows part numbers only, bottom box two lines
 v22: Verdana font on every page; Copy to Drive: steps 1, 2, 3 in a row, then 4 | 5 | Copied files list in 3 columns

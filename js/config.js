@@ -123,6 +123,16 @@ const CONFIG = {
   },
 
   // ---- P9 parts list ----
+  // ---- v23.1 LOAD FILES summary: part numbers read from inside the PDFs, split into 1… and ON… columns ----
+  pdfParts: {
+    // 1 + 4–6 digits (optional _suffix / -suffix), or ON / ON- + digits. Not part of a decimal like 1,249.98 or 152.40.
+    partNumber: /(?<![\w.,\/-])(1\d{4,6}(?:_\d{1,6})?(?:-[A-Z0-9]{1,4}(?![\w.]))?|ON-?\d[A-Z0-9]*(?:[-_][A-Z0-9]+)*)(?![\w.,])/i,
+    headerScan: 120, // rows searched for the Part / Qty header (a nest report's Part list sits low on the page)
+    groups: [
+      { key: 'one', title: 'Part numbers starting “1”', test: p => /^1/.test(p) },
+      { key: 'on', title: 'Part numbers starting “ON”', test: p => /^ON/i.test(p) },
+    ],
+  },
   partsList: {
     partNumber: /(?<!\d)(\d{5,6}(?:_\d{1,6})?)(?![\d])/, // 5–6 digit part numbers (optionally _suffix)
     maxPages: 30,

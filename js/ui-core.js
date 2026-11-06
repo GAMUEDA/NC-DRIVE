@@ -13,6 +13,7 @@ const S = {
   groups: [], // last nest (P5): [{gauge, r:{sheets, skipped, bed, grid}, req}]
   gi: 0, si: 0, // selected sheet (group index, sheet index)
   view: 'sheet', // 'sheet' | 'report' | 'files'
+  pdfParts: [], // v23.1: part numbers read from inside each PDF: {pdf, parts:[{part, qty, noQty}], error}
   loaded: [], // every file read by LOAD FILES: {name, ext, ok, note} — the Files summary in the Preview box
   bed: 0, sheetCustom: false,
   idc: 0, // part id counter

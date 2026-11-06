@@ -5,6 +5,7 @@
    textToRows(text)      → rows of cells from CSV / tab / spaced text
    parsePartsRows(rows)  → {job, lines, header}   finds the Qty / Part columns, else reads line by line
    Part numbers are 5–6 digits (CONFIG.partsList.partNumber).
+   readPdfPartNumbers(file) → {job, header, parts:[{part, qty, noQty}]}   v23.1: part numbers starting 1… or ON… (CONFIG.pdfParts)
    ===================================================================================================== */
 
 async function pdfToRows(buf) {
@@ -65,8 +66,8 @@ const WO_HDR = { qty: /^(qty|quantity|qnty|pcs|pieces|count|order\s*qty|req(uire
 const cellKind = c => { c = (c || '').trim(); if (!c || c.length > 28) return null; for (const k of ['qty', 'desc', 'part', 'item']) if (WO_HDR[k].test(c)) return k; return null; };
 function cellQty(cell) { cell = (cell || '').trim(); const m = /^(\d{1,5})(?:\.0+)?\s*(?:ea|each|pcs?|pieces)?$/i.exec(cell); return m ? +m[1] : NaN; }
 
-function parsePartsRows(rows) {
-  const WO_PN = CONFIG.partsList.partNumber;
+function parsePartsRows(rows, opt = {}) {
+  const WO_PN = opt.partNumber || CONFIG.partsList.partNumber, headScan = opt.headerScan || 40;
   const out = { job: '', lines: [], header: false };
   rows = rows.map(r => (r || []).map(c => (c == null ? '' : String(c)).replace(/\s+/g, ' ').trim()));
   // 1. job / work-order number near the top
@@ -80,7 +81,7 @@ function parsePartsRows(rows) {
   // 2. header row with a Qty column
   let hi = -1;
   const cols = {};
-  for (let r = 0; r < Math.min(rows.length, 40); r++) {
+  for (let r = 0; r < Math.min(rows.length, headScan); r++) {
     const k = rows[r].map(cellKind);
     if (k.includes('qty') && (k.includes('part') || k.includes('item') || k.includes('desc'))) { hi = r; k.forEach((x, i) => { if (x && !(x in cols)) cols[x] = i; }); break; }
   }
@@ -119,4 +120,19 @@ function parsePartsRows(rows) {
 async function readPartsList(file) {
   const rows = /\.pdf$/i.test(file.name) ? await pdfToRows(await file.arrayBuffer()) : textToRows(await file.text());
   return { rows, ...parsePartsRows(rows) };
+}
+
+// v23.1 · LOAD FILES → Preview summary: every part number listed INSIDE a PDF (work order, nest report "Part list",
+// drawing), only the ones starting "1" or "ON" (CONFIG.pdfParts.partNumber). Uses the Part / Qty table when the PDF has one.
+async function readPdfPartNumbers(file) {
+  const rows = await pdfToRows(await file.arrayBuffer());
+  const r = parsePartsRows(rows, { partNumber: CONFIG.pdfParts.partNumber, headerScan: CONFIG.pdfParts.headerScan });
+  const m = new Map();
+  for (const l of r.lines) {
+    const k = l.part.toUpperCase();
+    const e = m.get(k) || { part: k, qty: 0, noQty: false };
+    e.qty += l.qty; if (l.warn) e.noQty = true;
+    m.set(k, e);
+  }
+  return { job: r.job, header: r.header, parts: [...m.values()] };
 }

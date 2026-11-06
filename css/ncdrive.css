@@ -613,3 +613,5 @@
   .fsChip.fs-nc { color: var(--ok); border-color: currentColor; }
   .fsChip.fs-bad { color: var(--warn); border-style: dashed; text-decoration: line-through; }
   @media (max-width: 700px) { .fsCols { grid-template-columns: 1fr; } }
+  .fsQty { color: var(--ink); font-size: 11px; min-width: 34px; text-align: right; font-weight: 400; }
+  .fsChip.fs-miss { color: var(--warn); border-style: dashed; }

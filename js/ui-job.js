@@ -27,6 +27,16 @@ async function handleFiles(files) {
     done++;
     const lower = f.name.toLowerCase();
     if (lower.endsWith('.pdf')) {
+      // v23.1: itemize every part number listed inside the PDF (1… and ON…) for the Preview summary
+      try {
+        const pp = await readPdfPartNumbers(f);
+        S.pdfParts = S.pdfParts.filter(x => x.pdf.toLowerCase() !== f.name.toLowerCase());
+        S.pdfParts.push({ pdf: f.name, parts: pp.parts, job: pp.job });
+        log(`${f.name}: ${pp.parts.length ? `${pp.parts.length} part number${pp.parts.length > 1 ? 's' : ''} read — ${pp.parts.map(x => x.part).join(', ')}` : 'no part numbers starting 1 or ON found'}`, pp.parts.length ? 'ok' : 'warn');
+      } catch (e) {
+        S.pdfParts = S.pdfParts.filter(x => x.pdf.toLowerCase() !== f.name.toLowerCase());
+        S.pdfParts.push({ pdf: f.name, parts: [], error: (e && e.message) || String(e) });
+      }
       const r = await readDrawingPdf(f);
       if (r.error) { log(r.error, r.kind); noteLoaded(f, false, r.error); continue; }
       const entry = r.entry;
@@ -252,45 +262,47 @@ function wireSheetsPanel() {
 }
 
 // ---- CENTRE VIEW: one sheet, or the report (P7) ----
-// ---- FILES SUMMARY: what LOAD FILES read, in columns — names starting 1…, names starting ON-, then anything else ----
-const FILE_GROUPS = [
-  { key: 'one', title: 'Files starting “1”', test: n => /^1/.test(n) },
-  { key: 'on', title: 'Files starting “ON-”', test: n => /^on-/i.test(n) },
-  { key: 'other', title: 'Other files', test: () => true },
-];
+// ---- FILES SUMMARY (v23.1): the part numbers READ FROM INSIDE the loaded PDFs, itemized and split into columns —
+// "1…" and "ON…" (CONFIG.pdfParts.groups). Each part shows its quantity (summed over the PDFs), the PDFs it is in,
+// and whether its DXF / NC is loaded. Loaded DXF / NC files that no PDF lists get a column of their own.
 function filesSummaryHtml() {
-  const cols = FILE_GROUPS.map(g => ({ ...g, parts: new Map(), n: 0, pdf: 0, dxf: 0, nc: 0, bad: 0 }));
-  for (const f of S.loaded) {
-    const c = cols.find(g => g.test(f.name.trim()));
-    const base = f.name.replace(/\.(pdf|dxf|nc)$/i, '');
-    const k = base.toLowerCase();
-    if (!c.parts.has(k)) c.parts.set(k, { base, files: [] });
-    c.parts.get(k).files.push(f);
-    c.n++;
-    if (!f.ok) c.bad++;
-    else if (c[f.ext] !== undefined) c[f.ext]++;
-  }
-  const shown = cols.filter(c => c.key !== 'other' || c.n);
   const cmp = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
-  const order = { pdf: 0, dxf: 1, nc: 2 };
-  const col = c => {
-    const rows = [...c.parts.values()].sort((a, b) => cmp(a.base, b.base)).map(p => {
-      const chips = p.files.sort((a, b) => (order[a.ext] ?? 9) - (order[b.ext] ?? 9)).map(f => `<span class="fsChip ${f.ok ? 'fs-' + esc(f.ext) : 'fs-bad'}" title="${esc(f.name + (f.note ? ' · ' + f.note : ''))}">${esc((f.ext || '?').toUpperCase())}</span>`).join('');
-      return `<li><span class="fsName">${esc(p.base)}</span><span class="fsChips">${chips}</span></li>`;
+  const parts = new Map();
+  for (const d of S.pdfParts) for (const p of d.parts) {
+    const e = parts.get(p.part) || { part: p.part, qty: 0, noQty: false, pdfs: [] };
+    e.qty += p.qty; e.noQty = e.noQty || p.noQty; e.pdfs.push(d.pdf);
+    parts.set(p.part, e);
+  }
+  const base = f => f.name.replace(/\.(pdf|dxf|nc)$/i, '').toUpperCase();
+  const cad = S.loaded.filter(f => f.ext === 'dxf' || f.ext === 'nc');
+  // a loaded file belongs to a part when its name is the part number, or starts with it followed by a non-digit
+  const belongs = (f, pn) => { const b = base(f); return b === pn || (b.startsWith(pn) && !/[0-9A-Z]/.test(b[pn.length]) ); };
+  const filesOf = pn => cad.filter(f => belongs(f, pn));
+  const chip = f => `<span class="fsChip ${f.ok ? 'fs-' + esc(f.ext) : 'fs-bad'}" title="${esc(f.name + (f.note ? ' · ' + f.note : ''))}">${esc(f.ext.toUpperCase())}</span>`;
+  const cols = CONFIG.pdfParts.groups.map(g => {
+    const list = [...parts.values()].filter(p => g.test(p.part)).sort((a, b) => cmp(a.part, b.part));
+    const pcs = list.reduce((a, p) => a + p.qty, 0), have = list.filter(p => filesOf(p.part).some(f => f.ok)).length;
+    const rows = list.map(p => {
+      const fs = filesOf(p.part);
+      return `<li><span class="fsName" title="${esc('in ' + p.pdfs.join(', '))}">${esc(p.part)}</span><span class="fsChips"><b class="fsQty mono" title="${p.noQty ? 'no quantity in the PDF for some lines — counted as 1' : 'quantity from the PDF'}">×${p.qty}${p.noQty ? '?' : ''}</b>${fs.length ? fs.map(chip).join('') : '<span class="fsChip fs-miss" title="no DXF or NC loaded for this part">no file</span>'}</span></li>`;
     }).join('');
-    const tally = [c.pdf && `${c.pdf} PDF`, c.dxf && `${c.dxf} DXF`, c.nc && `${c.nc} NC`, c.bad && `<span style="color:var(--warn)">${c.bad} skipped</span>`].filter(Boolean).join(' · ');
-    return `<div class="fsCol fs-${c.key}"><div class="fsHead"><b>${esc(c.title)}</b><span class="fsCount mono">${c.parts.size}</span></div>
-      <div class="fsTally">${c.n ? `${c.n} file${c.n > 1 ? 's' : ''}${tally ? ' · ' + tally : ''}` : 'none loaded'}</div>
+    return `<div class="fsCol fs-${g.key}"><div class="fsHead"><b>${esc(g.title)}</b><span class="fsCount mono">${list.length}</span></div>
+      <div class="fsTally">${list.length ? `${pcs} pcs · ${have} of ${list.length} with a DXF / NC loaded` : 'none in the PDFs'}</div>
       <ul class="fsList">${rows || '<li class="muted">—</li>'}</ul></div>`;
-  };
-  const tot = S.loaded.length;
-  return `<div class="fileSum"><div class="stats"><span><b>${tot}</b> file${tot === 1 ? '' : 's'} loaded</span>${cols.map(c => c.n && c.key !== 'other' ? `<span><b>${c.parts.size}</b> ${c.key === 'one' ? '“1…”' : '“ON-”'} part${c.parts.size === 1 ? '' : 's'}</span>` : '').join('')}${S.groups.length ? '<span style="margin-left:auto">Sheet / Report above to go back to the nest</span>' : ''}</div>
-    <div class="fsCols" style="--fs-n:${shown.length}">${shown.map(col).join('')}</div></div>`;
+  });
+  const extra = cad.filter(f => ![...parts.keys()].some(pn => belongs(f, pn))).sort((a, b) => cmp(a.name, b.name));
+  if (extra.length) cols.push(`<div class="fsCol fs-other"><div class="fsHead"><b>Loaded, not in any PDF</b><span class="fsCount mono">${extra.length}</span></div>
+      <div class="fsTally">DXF / NC files no PDF lists</div>
+      <ul class="fsList">${extra.map(f => `<li><span class="fsName">${esc(base(f))}</span><span class="fsChips">${chip(f)}</span></li>`).join('')}</ul></div>`);
+  const nPdf = S.pdfParts.length, bad = S.pdfParts.filter(d => d.error), tot = parts.size;
+  const head = `<div class="stats"><span><b>${nPdf}</b> PDF${nPdf === 1 ? '' : 's'} read</span><span><b>${tot}</b> part number${tot === 1 ? '' : 's'} itemized</span>${CONFIG.pdfParts.groups.map(g => { const n = [...parts.keys()].filter(g.test).length; return `<span><b>${n}</b> ${g.key === 'one' ? '“1…”' : '“ON…”'}</span>`; }).join('')}<span><b>${cad.length}</b> DXF / NC loaded</span>${bad.length ? `<span style="color:var(--warn)" title="${esc(bad.map(d => d.pdf + ': ' + d.error).join('\n'))}"><b>${bad.length}</b> PDF${bad.length > 1 ? 's' : ''} not readable</span>` : ''}</div>`;
+  const note = !nPdf ? '<div class="hint" style="margin-bottom:8px">No PDF loaded yet — load the work order / nest PDFs and their part numbers are listed here.</div>' : '';
+  return `<div class="fileSum">${head}${note}<div class="fsCols" style="--fs-n:${cols.length}">${cols.join('')}</div></div>`;
 }
 function renderView() {
   const v = $('#view');
   if (S.view === 'files' || (!S.groups.length && S.loaded.length)) {
-    $('#mainTitle').textContent = 'Preview · loaded files';
+    $('#mainTitle').textContent = 'Preview · part numbers from the PDFs';
     v.innerHTML = S.loaded.length ? filesSummaryHtml() : '<div class="empty">No files loaded yet. Use <b>Load files…</b> to read .pdf, .dxf or .nc files.</div>';
     return;
   }
